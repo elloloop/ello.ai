@@ -67,6 +67,7 @@ LLAMA_ENDPOINT=http://localhost:11434
 ```
 
 Keys can also be added through the in-app settings panel.
+If no `OPENAI_API_KEY` is provided, the app uses a built-in mock model for local testing.
 
 ## Architecture
 
