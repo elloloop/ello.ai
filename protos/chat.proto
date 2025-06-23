@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package chat;
+
+// Service for handling chat interactions
+service ChatService {
+  // Chat method where client sends a single message and server streams responses
+  rpc Chat(ChatMessage) returns (stream ChatMessage) {}
+  
+  // Stream for sending progress updates
+  rpc Progress(ProgressRequest) returns (stream ProgressUpdate) {}
+
+  // Starts a new conversation
+  rpc StartConversation(StartConversationRequest) returns (StartConversationResponse) {}
+}
+
+// Message representing a chat message
+message ChatMessage {
+  string message_id = 1;
+  string content = 2;
+  MessageType type = 3;
+  repeated string available_tools = 4;
+  repeated ActionRequest actions = 5;
+  string conversation_id = 6;
+}
+
+// Message types
+enum MessageType {
+  USER_QUERY = 0;
+  ASSISTANT_RESPONSE = 1;
+  ACTION_REQUEST = 2;
+  ACTION_RESPONSE = 3;
+}
+
+// Request for client-side actions
+message ActionRequest {
+  string action_id = 1;
+  string description = 2;
+  repeated string required_inputs = 3;
+}
+
+// Request to start a new conversation
+message StartConversationRequest {
+  string client_id = 1;
+  string conversation_id = 2;
+}
+
+// Response for starting a new conversation
+message StartConversationResponse {
+  string conversation_id = 1;
+}
+
+// Progress update message
+message ProgressUpdate {
+  string status = 1;
+  float progress = 2;
+  string message = 3;
+}
+
+// Progress request message
+message ProgressRequest {
+  string request_id = 1;
+}

@@ -4,8 +4,8 @@ version: 0.1.0
 publish_to: none
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
-  flutter: '>=3.22.0'
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.22.0"
 
 dependencies:
   flutter:
@@ -16,7 +16,14 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  grpc: ^3.2.4 # Using standard gRPC for Cloud Run communication
+  protobuf: ^3.1.0 # Version compatible with protoc_plugin
+  fixnum: ^1.1.0
+  uuid: ^4.3.3 # For generating unique message IDs
+
+dev_dependencies:
+  protoc_plugin: ^21.1.2
+  build_runner: ^2.4.7
 
 flutter:
   uses-material-design: true
-

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/llm_providers.dart';
+import '../../core/dependencies.dart';
 
 class ModelPicker extends ConsumerWidget {
   const ModelPicker({super.key});
@@ -8,16 +8,21 @@ class ModelPicker extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final model = ref.watch(modelProvider);
+    final availableModels = ref.watch(availableModelsProvider);
+
     return DropdownButton<String>(
       value: model,
       onChanged: (value) {
         if (value != null) {
-          ref.read(modelProvider.notifier).state = value;
+          ref.read(modelProvider.notifier).selectModel(value);
         }
       },
-      items: const [
-        DropdownMenuItem(value: 'OpenAI', child: Text('OpenAI')),
-      ],
+      items: availableModels.map((String modelName) {
+        return DropdownMenuItem<String>(
+          value: modelName,
+          child: Text(modelName),
+        );
+      }).toList(),
     );
   }
 }

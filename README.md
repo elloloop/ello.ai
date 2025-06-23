@@ -1,4 +1,3 @@
-
 # ello.AI
 
 > A sleek, modern AI chat assistant for every platform. Private, powerful, and model-flexible.
@@ -109,6 +108,87 @@ To add a new model:
 2. Implement `ChatClient`
 3. Register it in `providers/llm_providers.dart`
 4. Expose it in `ui/settings/model_picker.dart`
+
+## gRPC Server Integration
+
+ello.AI supports connecting to a gRPC server for chat functionality. The app includes:
+
+1. Proto definitions in `/protos/chat.proto`
+2. Generated Dart client code in `lib/src/generated/`
+3. A gRPC client service in `lib/src/services/chat_service_client.dart`
+
+### Setting up the gRPC Connection
+
+Initialize the connection using the `grpcConnectionProvider`:
+
+```dart
+final config = GrpcConnectionConfig(
+  host: 'localhost', // Change to your server's host
+  port: 50051,      // Change to your server's port
+  secure: false,    // Set to true for TLS
+);
+
+// Initialize the connection
+await ref.read(grpcConnectionProvider(config).future);
+```
+
+### gRPC-Web Support
+
+The app includes gRPC-Web support for better compatibility with services like Cloud Run:
+
+- For Cloud Run and other similar services, gRPC-Web is automatically enabled
+- You can toggle between standard gRPC and gRPC-Web in the debug settings
+
+The client automatically detects Cloud Run services (domains ending with `run.app`) and defaults to gRPC-Web mode with secure connections.
+
+### Debug Settings
+
+In debug mode, a bug icon appears in the app bar that opens debug settings:
+
+- Toggle between mock and real gRPC clients
+- Switch between standard gRPC and gRPC-Web
+- Edit gRPC server connection details (host, port, secure mode)
+- Test connection to verify your settings
+- Reset to production or local development settings
+- Monitor connection failures and toggle auto-fallback to mock mode
+
+The debug UI is only available in debug builds and will not appear in release builds.
+
+### Streaming Chat Messages
+
+Use the `chatStreamProvider` to stream responses:
+
+```dart
+// Assume messages is a List<YourMessageType>
+ref.read(chatStreamProvider(messages)).when(
+  data: (response) {
+    // Handle each chunk from the stream
+    print('Received: ${response.content}');
+
+    // Check if the stream is complete
+    if (response.isDone) {
+      print('Stream completed');
+    }
+  },
+  loading: () {
+    // Stream is being processed
+  },
+  error: (error, stackTrace) {
+    print('Error: $error');
+  },
+);
+```
+
+### Running the Go Server
+
+A sample Go server is included in the `/server` directory:
+
+```bash
+cd server
+go run main.go
+```
+
+The server listens on port 50051 by default and provides an echo service for testing.
 
 ## Roadmap
 

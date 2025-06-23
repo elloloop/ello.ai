@@ -1,0 +1,155 @@
+import 'package:grpc/grpc.dart';
+import 'dart:async';
+import '../generated/chat.pbgrpc.dart';
+
+// A version that works with both web and non-web platforms
+class ChatGrpcClient {
+  late final ChatServiceClient _client;
+  ClientChannel? _channel;
+  bool _isCloudRun = false;
+
+  // Singleton pattern
+  static final ChatGrpcClient _instance = ChatGrpcClient._internal();
+  factory ChatGrpcClient() => _instance;
+
+  ChatGrpcClient._internal();
+
+  Future<void> init({
+    required String host,
+    required int port,
+    bool secure = false,
+    int retryAttempts = 2,
+  }) async {
+    print('Initializing standard gRPC client: $host:$port (secure: $secure)');
+
+    try {
+      // Special handling for Cloud Run servers
+      _isCloudRun = host.contains('run.app');
+      if (_isCloudRun && port == 443) {
+        print('Detected Cloud Run service, applying specialized configuration');
+        secure = true; // Force secure connection for Cloud Run
+      }
+
+      // Create channel options with appropriate settings
+      final options = ChannelOptions(
+        credentials: secure
+            ? const ChannelCredentials.secure()
+            : const ChannelCredentials.insecure(),
+        codecRegistry:
+            CodecRegistry(codecs: const [GzipCodec(), IdentityCodec()]),
+        // Add a longer timeout for cloud connections
+        connectionTimeout: const Duration(seconds: 15),
+      );
+
+      _channel = ClientChannel(
+        host,
+        port: port,
+        options: options,
+      );
+
+      _client = ChatServiceClient(_channel!);
+
+      // Test connection with retry logic
+      int attempts = 0;
+      bool connected = false;
+      Exception? lastError;
+
+      while (attempts < retryAttempts && !connected) {
+        try {
+          print('Testing gRPC connection (attempt ${attempts + 1}/$retryAttempts)...');
+          await _channel!.getConnection().timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              throw Exception('Connection test timed out');
+            },
+          );
+          connected = true;
+          print('gRPC connection test successful!');
+        } catch (e) {
+          lastError = e is Exception ? e : Exception(e.toString());
+          print('Connection attempt ${attempts + 1} failed: $e');
+          attempts++;
+
+          if (attempts < retryAttempts) {
+            print('Retrying in 1 second...');
+            await Future.delayed(const Duration(seconds: 1));
+          }
+        }
+      }
+
+      if (!connected) {
+        print('All connection attempts failed');
+        throw lastError ??
+            Exception('Failed to connect after $retryAttempts attempts');
+      }
+    } catch (e) {
+      print('Error initializing gRPC client: $e');
+      rethrow;
+    }
+  }
+
+  // This method now just calls regular init for compatibility
+  // since gRPC-Web requires dart:html, which doesn't work on desktop/mobile
+  Future<void> initWithWeb({
+    required String host,
+    required int port,
+    bool secure = false,
+    int retryAttempts = 2,
+  }) async {
+    print('Note: Using regular gRPC with TLS for Cloud Run compatibility');
+    print('The server should be configured to accept both gRPC-Web and standard gRPC');
+    
+    // Just use regular gRPC with TLS for Cloud Run
+    await init(
+      host: host,
+      port: port,
+      secure: true, // Always use secure for Cloud Run
+      retryAttempts: retryAttempts,
+    );
+  }
+
+  Future<void> shutdown() async {
+    try {
+      if (_channel != null) {
+        await _channel!.shutdown();
+        print('gRPC channel shut down successfully');
+      }
+    } catch (e) {
+      print('Error shutting down gRPC channel: $e');
+    }
+  }
+
+  Stream<ChatResponse> chatStream(List<Message> messages) {
+    try {
+      final request = ChatRequest()..messages.addAll(messages);
+      print('Creating chat stream with ${messages.length} messages');
+
+      // Create a stream with error logging
+      final stream = _client.chatStream(request);
+
+      // Transform stream to intercept errors
+      return stream.transform(
+        StreamTransformer.fromHandlers(
+          handleError: (error, stackTrace, sink) {
+            print('Error in gRPC stream: $error');
+
+            // Provide more diagnostic information for common gRPC errors
+            if (error.toString().contains('protocol')) {
+              print('Protocol error detected. This may indicate an incompatibility between the client and server.');
+              print('The server may only support gRPC-Web. Please check server configuration.');
+            } else if (error.toString().contains('deadline')) {
+              print('Deadline exceeded. The server may be taking too long to respond.');
+            } else if (error.toString().contains('unavailable')) {
+              print('Service unavailable. The server may be down or unreachable.');
+            }
+
+            sink.addError(error, stackTrace);
+          },
+        ),
+      );
+    } catch (e) {
+      print('Error creating chat stream: $e');
+      rethrow;
+    }
+  }
+}

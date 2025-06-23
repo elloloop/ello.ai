@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+package llm_gateway;
+
+option go_package = "ello.ai/server/proto";
+
+// LLM Service definition for handling chat completions
+service LLMService {
+  // Stream chat completions for interactive conversation
+  rpc ChatCompletionStream(ChatRequest) returns (stream ChatResponse) {}
+  
+  // Get a complete response in one call
+  rpc ChatCompletion(ChatRequest) returns (ChatCompletionResponse) {}
+}
+
+// Request format for chat completion
+message ChatRequest {
+  string model = 1;
+  repeated Message messages = 2;
+  float temperature = 3;
+  int32 max_tokens = 4;
+  string user_id = 5;
+}
+
+// Single message in a conversation
+message Message {
+  string role = 1;
+  string content = 2;
+}
+
+// Streaming response format
+message ChatResponse {
+  string id = 1;
+  string model = 2;
+  Choice choice = 3;
+  uint64 created = 4;
+  bool done = 5;
+}
+
+// Complete response (non-streaming)
+message ChatCompletionResponse {
+  string id = 1;
+  string model = 2;
+  repeated Choice choices = 3;
+  uint64 created = 4;
+  uint64 usage_prompt_tokens = 5;
+  uint64 usage_completion_tokens = 6;
+  uint64 usage_total_tokens = 7;
+}
+
+// Response choice containing generated content
+message Choice {
+  Message message = 1;
+  string finish_reason = 2;
+  int32 index = 3;
+} 

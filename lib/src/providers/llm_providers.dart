@@ -1,16 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../llm_client/chat_client.dart';
-import '../llm_client/openai_client.dart';
-import '../llm_client/mock_client.dart';
+import '../core/dependencies.dart';
 
-final modelProvider = StateProvider<String>((ref) => 'OpenAI');
+// This file is deprecated.
+// Use ../core/dependencies.dart instead for all provider definitions.
 
-final currentChatClientProvider = Provider<ChatClient>((ref) {
-  final model = ref.watch(modelProvider);
-  switch (model) {
-    case 'OpenAI':
-    default:
-      final key = const String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
-        return key.isEmpty ? MockClient() : OpenAIClient(key);
-  }
-});
+// Re-export providers from dependencies.dart
+export '../core/dependencies.dart';

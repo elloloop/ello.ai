@@ -9,10 +9,10 @@ class OpenAIClient implements ChatClient {
   final String apiKey;
 
   @override
-  Stream<String> chat({required List<Message> messages}) async* {
+  Stream<String> chat({required List<Message> messages, String? model}) async* {
     final url = Uri.https('api.openai.com', '/v1/chat/completions');
     final body = jsonEncode({
-      'model': 'gpt-3.5-turbo',
+      'model': model ?? 'gpt-3.5-turbo',
       'stream': true,
       'messages': [
         for (final m in messages)
@@ -34,7 +34,9 @@ class OpenAIClient implements ChatClient {
       throw Exception('HTTP ' + response.statusCode.toString());
     }
 
-    await for (final chunk in response.stream.transform(const Utf8Decoder()).transform(const LineSplitter())) {
+    await for (final chunk in response.stream
+        .transform(const Utf8Decoder())
+        .transform(const LineSplitter())) {
       if (chunk.startsWith('data: ')) {
         final data = chunk.substring(6);
         if (data == '[DONE]') break;
