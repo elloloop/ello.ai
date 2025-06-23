@@ -205,6 +205,34 @@ The server listens on port 50051 by default and provides an echo service for tes
 3. Run `dart format` and `flutter analyze`
 4. Open a pull request against `main`
 
+### CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration. Every pull request triggers:
+
+- **Flutter Checks**: Linting, formatting, and tests
+- **Go Server Checks**: Formatting, vetting, and tests  
+- **Build Verification**: Ensures all platforms compile
+- **Security Scanning**: Vulnerability detection
+
+#### Pre-Push Validation
+
+Run the local validation script before pushing:
+
+```bash
+./scripts/pre-push-check.sh
+```
+
+This script runs the same checks as the CI pipeline locally, saving time and preventing failed builds.
+
+#### Branch Protection
+
+The `main` branch is protected and requires:
+- All status checks to pass
+- At least one approval
+- Conversation resolution
+
+See [`docs/BRANCH_PROTECTION_SETUP.md`](docs/BRANCH_PROTECTION_SETUP.md) for detailed setup instructions.
+
 ## License
 
 MIT. See `LICENSE` for the full text.
