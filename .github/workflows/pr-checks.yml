@@ -1,0 +1,201 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    types: [ opened, synchronize, reopened ]
+
+# Prevents concurrent runs on the same PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flutter-checks:
+    name: Flutter Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter Doctor
+        run: flutter doctor -v
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Verify the system
+        run: flutter doctor
+
+      - name: Generate protobuf files
+        run: |
+          flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Analyze Flutter code
+        run: flutter analyze --fatal-infos --fatal-warnings
+
+      - name: Check Flutter formatting
+        run: dart format --set-exit-if-changed .
+
+      - name: Run Flutter tests
+        run: flutter test --coverage --reporter=github
+
+      - name: Upload coverage to Codecov (optional)
+        if: success()
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+          flags: flutter
+          name: flutter-coverage
+        continue-on-error: true
+
+  go-checks:
+    name: Go Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: ./server
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache-dependency-path: server/go.sum
+
+      - name: Get Go dependencies
+        run: go mod download
+
+      - name: Verify Go dependencies
+        run: go mod verify
+
+      - name: Check Go formatting
+        run: |
+          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
+            echo "The following files need formatting:"
+            gofmt -s -l .
+            exit 1
+          fi
+
+      - name: Run Go vet
+        run: go vet ./...
+
+      - name: Run Go staticcheck
+        uses: dominikh/staticcheck-action@v1.3.0
+        with:
+          version: "2023.1.6"
+          working-directory: server
+
+      - name: Run Go tests
+        run: |
+          # Run tests if any *_test.go files exist
+          if ls *_test.go 1> /dev/null 2>&1; then
+            go test -v -race -coverprofile=coverage.out ./...
+            go tool cover -html=coverage.out -o coverage.html
+          else
+            echo "No Go test files found, skipping tests"
+          fi
+
+  build-check:
+    name: Build Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [flutter-checks, go-checks]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.22.0'
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          cache-dependency-path: server/go.sum
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Get Go dependencies
+        run: |
+          cd server
+          go mod download
+
+      - name: Generate protobuf files
+        run: |
+          flutter pub run build_runner build --delete-conflicting-outputs
+
+      - name: Build Flutter app (Web)
+        run: flutter build web --no-pub
+
+      - name: Build Flutter app (Android APK)
+        run: flutter build apk --debug --no-pub
+
+      - name: Build Go server
+        run: |
+          cd server
+          go build -v .
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+  summary:
+    name: PR Status Summary
+    runs-on: ubuntu-latest
+    needs: [flutter-checks, go-checks, build-check]
+    if: always()
+
+    steps:
+      - name: Check all job results
+        run: |
+          echo "Flutter checks: ${{ needs.flutter-checks.result }}"
+          echo "Go checks: ${{ needs.go-checks.result }}"
+          echo "Build check: ${{ needs.build-check.result }}"
+          
+          if [[ "${{ needs.flutter-checks.result }}" != "success" || "${{ needs.go-checks.result }}" != "success" || "${{ needs.build-check.result }}" != "success" ]]; then
+            echo "❌ One or more checks failed. PR cannot be merged."
+            exit 1
+          else
+            echo "✅ All checks passed. PR is ready for review."
+          fi
