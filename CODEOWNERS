@@ -1,0 +1,29 @@
+# Global owners - these users will be the default owners for everything in
+# the repo. Unless a later match takes precedence, they will be requested for
+# review when someone opens a pull request.
+* @iarunsaragadam
+
+# Flutter/Dart code
+*.dart @iarunsaragadam
+pubspec.yaml @iarunsaragadam
+analysis_options.yaml @iarunsaragadam
+
+# Go code
+*.go @iarunsaragadam
+go.mod @iarunsaragadam
+go.sum @iarunsaragadam
+
+# Protobuf files
+*.proto @iarunsaragadam
+
+# GitHub workflows
+.github/ @iarunsaragadam
+
+# Documentation
+*.md @iarunsaragadam
+docs/ @iarunsaragadam
+
+# Configuration files
+*.yaml @iarunsaragadam
+*.yml @iarunsaragadam
+*.json @iarunsaragadam 
