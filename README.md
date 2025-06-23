@@ -231,7 +231,7 @@ The `main` branch is protected and requires:
 - At least one approval
 - Conversation resolution
 
-See [`docs/BRANCH_PROTECTION_SETUP.md`](docs/BRANCH_PROTECTION_SETUP.md) for detailed setup instructions.
+Branch protection is configured and enforced automatically via GitHub settings.
 
 ## License
 
