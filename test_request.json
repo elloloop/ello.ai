@@ -1,9 +1,0 @@
-{
-  "messages": [
-    {
-      "content": "Hello, is the gRPC service working?",
-      "role": "USER",
-      "timestamp": "1687450000000"
-    }
-  ]
-}

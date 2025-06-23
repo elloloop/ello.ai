@@ -7,14 +7,17 @@ This document provides explicit instructions for AI agents contributing to the `
 ## 🛠️ Code Authoring
 
 1. **Language & Frameworks**
+
    - Use **Dart** and **Flutter** for all implementations.
    - Follow Flutter's official best practices for UI and state management.
 
 2. **Code Formatting**
+
    - Run `dart format .` on the project root before submitting code.
    - Do not include unformatted or partially formatted code.
 
 3. **Static Analysis**
+
    - Run `flutter analyze`.
    - Fix **all** warnings and errors before proceeding.
 
@@ -53,6 +56,7 @@ This document provides explicit instructions for AI agents contributing to the `
   - `docs`: Documentation only
 
 **Examples:**
+
 ```
 feat(auth): add OTP verification flow
 fix(api): handle 401 errors gracefully
@@ -70,6 +74,7 @@ chore: update dependencies
   - Test coverage or validation steps taken
 
 **Example PR:**
+
 ```
 Title: feat(messages): add infinite scroll to chat view
 
@@ -87,6 +92,7 @@ Affects: chat_screen.dart, chat_repository.dart
 ## ✅ Validation & Tests
 
 1. **Test Requirements**
+
    - Write tests for any new logic, widget, or data layer code.
    - Run all tests using `flutter test` before creating a PR.
    - Do not commit with failing or skipped tests unless annotated with a reason.

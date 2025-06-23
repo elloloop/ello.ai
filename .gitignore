@@ -11,3 +11,22 @@ pubspec.lock
 # OS files
 .DS_Store
 
+# Compiled binaries
+server/server
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Temporary files
+*.tmp
+*.bak
+*.old
+*.new
+*.swp
+*.swo
+
+# IDE files
+.vscode/
+*.code-workspace
+
