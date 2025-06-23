@@ -1,6 +1,5 @@
 import 'package:grpc/grpc.dart';
 import '../models/message.dart' as app;
-import '../generated/llm_gateway/llm_service.pb.dart';
 import '../generated/llm_gateway/llm_service.pbgrpc.dart';
 import 'chat_client.dart';
 

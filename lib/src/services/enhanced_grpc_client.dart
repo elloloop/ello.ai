@@ -1,8 +1,6 @@
 import 'dart:async';
-import 'package:grpc/grpc.dart';
 import 'package:uuid/uuid.dart';
 import '../generated/chat.pbgrpc.dart';
-import '../generated/chat.pbenum.dart';
 
 /// Enhanced gRPC chat client that follows the same pattern as the Python client
 /// This implementation focuses on robust conversation handling and streaming

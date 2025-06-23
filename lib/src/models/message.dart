@@ -4,7 +4,8 @@ class Message {
   final String content;
   final bool isUser;
 
-  factory Message.user(String content) => Message(content: content, isUser: true);
+  factory Message.user(String content) =>
+      Message(content: content, isUser: true);
   factory Message.assistant(String content) =>
       Message(content: content, isUser: false);
 

@@ -18,7 +18,14 @@ const ChatRequest$json = {
   '1': 'ChatRequest',
   '2': [
     {'1': 'model', '3': 1, '4': 1, '5': 9, '10': 'model'},
-    {'1': 'messages', '3': 2, '4': 3, '5': 11, '6': '.llm_gateway.Message', '10': 'messages'},
+    {
+      '1': 'messages',
+      '3': 2,
+      '4': 3,
+      '5': 11,
+      '6': '.llm_gateway.Message',
+      '10': 'messages'
+    },
     {'1': 'temperature', '3': 3, '4': 1, '5': 2, '10': 'temperature'},
     {'1': 'max_tokens', '3': 4, '4': 1, '5': 5, '10': 'maxTokens'},
     {'1': 'user_id', '3': 5, '4': 1, '5': 9, '10': 'userId'},
@@ -52,7 +59,14 @@ const ChatResponse$json = {
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'model', '3': 2, '4': 1, '5': 9, '10': 'model'},
-    {'1': 'choice', '3': 3, '4': 1, '5': 11, '6': '.llm_gateway.Choice', '10': 'choice'},
+    {
+      '1': 'choice',
+      '3': 3,
+      '4': 1,
+      '5': 11,
+      '6': '.llm_gateway.Choice',
+      '10': 'choice'
+    },
     {'1': 'created', '3': 4, '4': 1, '5': 4, '10': 'created'},
     {'1': 'done', '3': 5, '4': 1, '5': 8, '10': 'done'},
   ],
@@ -70,11 +84,36 @@ const ChatCompletionResponse$json = {
   '2': [
     {'1': 'id', '3': 1, '4': 1, '5': 9, '10': 'id'},
     {'1': 'model', '3': 2, '4': 1, '5': 9, '10': 'model'},
-    {'1': 'choices', '3': 3, '4': 3, '5': 11, '6': '.llm_gateway.Choice', '10': 'choices'},
+    {
+      '1': 'choices',
+      '3': 3,
+      '4': 3,
+      '5': 11,
+      '6': '.llm_gateway.Choice',
+      '10': 'choices'
+    },
     {'1': 'created', '3': 4, '4': 1, '5': 4, '10': 'created'},
-    {'1': 'usage_prompt_tokens', '3': 5, '4': 1, '5': 4, '10': 'usagePromptTokens'},
-    {'1': 'usage_completion_tokens', '3': 6, '4': 1, '5': 4, '10': 'usageCompletionTokens'},
-    {'1': 'usage_total_tokens', '3': 7, '4': 1, '5': 4, '10': 'usageTotalTokens'},
+    {
+      '1': 'usage_prompt_tokens',
+      '3': 5,
+      '4': 1,
+      '5': 4,
+      '10': 'usagePromptTokens'
+    },
+    {
+      '1': 'usage_completion_tokens',
+      '3': 6,
+      '4': 1,
+      '5': 4,
+      '10': 'usageCompletionTokens'
+    },
+    {
+      '1': 'usage_total_tokens',
+      '3': 7,
+      '4': 1,
+      '5': 4,
+      '10': 'usageTotalTokens'
+    },
   ],
 };
 
@@ -91,7 +130,14 @@ final $typed_data.Uint8List chatCompletionResponseDescriptor = $convert.base64De
 const Choice$json = {
   '1': 'Choice',
   '2': [
-    {'1': 'message', '3': 1, '4': 1, '5': 11, '6': '.llm_gateway.Message', '10': 'message'},
+    {
+      '1': 'message',
+      '3': 1,
+      '4': 1,
+      '5': 11,
+      '6': '.llm_gateway.Message',
+      '10': 'message'
+    },
     {'1': 'finish_reason', '3': 2, '4': 1, '5': 9, '10': 'finishReason'},
     {'1': 'index', '3': 3, '4': 1, '5': 5, '10': 'index'},
   ],
@@ -102,4 +148,3 @@ final $typed_data.Uint8List choiceDescriptor = $convert.base64Decode(
     'CgZDaG9pY2USLgoHbWVzc2FnZRgBIAEoCzIULmxsbV9nYXRld2F5Lk1lc3NhZ2VSB21lc3NhZ2'
     'USIwoNZmluaXNoX3JlYXNvbhgCIAEoCVIMZmluaXNoUmVhc29uEhQKBWluZGV4GAMgASgFUgVp'
     'bmRleA==');
-

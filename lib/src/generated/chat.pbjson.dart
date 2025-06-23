@@ -35,9 +35,23 @@ const ChatMessage$json = {
   '2': [
     {'1': 'message_id', '3': 1, '4': 1, '5': 9, '10': 'messageId'},
     {'1': 'content', '3': 2, '4': 1, '5': 9, '10': 'content'},
-    {'1': 'type', '3': 3, '4': 1, '5': 14, '6': '.chat.MessageType', '10': 'type'},
+    {
+      '1': 'type',
+      '3': 3,
+      '4': 1,
+      '5': 14,
+      '6': '.chat.MessageType',
+      '10': 'type'
+    },
     {'1': 'available_tools', '3': 4, '4': 3, '5': 9, '10': 'availableTools'},
-    {'1': 'actions', '3': 5, '4': 3, '5': 11, '6': '.chat.ActionRequest', '10': 'actions'},
+    {
+      '1': 'actions',
+      '3': 5,
+      '4': 3,
+      '5': 11,
+      '6': '.chat.ActionRequest',
+      '10': 'actions'
+    },
     {'1': 'conversation_id', '3': 6, '4': 1, '5': 9, '10': 'conversationId'},
   ],
 };
@@ -76,9 +90,10 @@ const StartConversationRequest$json = {
 };
 
 /// Descriptor for `StartConversationRequest`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List startConversationRequestDescriptor = $convert.base64Decode(
-    'ChhTdGFydENvbnZlcnNhdGlvblJlcXVlc3QSGwoJY2xpZW50X2lkGAEgASgJUghjbGllbnRJZB'
-    'InCg9jb252ZXJzYXRpb25faWQYAiABKAlSDmNvbnZlcnNhdGlvbklk');
+final $typed_data.Uint8List startConversationRequestDescriptor =
+    $convert.base64Decode(
+        'ChhTdGFydENvbnZlcnNhdGlvblJlcXVlc3QSGwoJY2xpZW50X2lkGAEgASgJUghjbGllbnRJZB'
+        'InCg9jb252ZXJzYXRpb25faWQYAiABKAlSDmNvbnZlcnNhdGlvbklk');
 
 @$core.Deprecated('Use startConversationResponseDescriptor instead')
 const StartConversationResponse$json = {
@@ -89,9 +104,10 @@ const StartConversationResponse$json = {
 };
 
 /// Descriptor for `StartConversationResponse`. Decode as a `google.protobuf.DescriptorProto`.
-final $typed_data.Uint8List startConversationResponseDescriptor = $convert.base64Decode(
-    'ChlTdGFydENvbnZlcnNhdGlvblJlc3BvbnNlEicKD2NvbnZlcnNhdGlvbl9pZBgBIAEoCVIOY2'
-    '9udmVyc2F0aW9uSWQ=');
+final $typed_data.Uint8List startConversationResponseDescriptor =
+    $convert.base64Decode(
+        'ChlTdGFydENvbnZlcnNhdGlvblJlc3BvbnNlEicKD2NvbnZlcnNhdGlvbl9pZBgBIAEoCVIOY2'
+        '9udmVyc2F0aW9uSWQ=');
 
 @$core.Deprecated('Use progressUpdateDescriptor instead')
 const ProgressUpdate$json = {
@@ -119,4 +135,3 @@ const ProgressRequest$json = {
 /// Descriptor for `ProgressRequest`. Decode as a `google.protobuf.DescriptorProto`.
 final $typed_data.Uint8List progressRequestDescriptor = $convert.base64Decode(
     'Cg9Qcm9ncmVzc1JlcXVlc3QSHQoKcmVxdWVzdF9pZBgBIAEoCVIJcmVxdWVzdElk');
-
