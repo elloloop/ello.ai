@@ -24,9 +24,12 @@ class HomePage extends ConsumerWidget {
     final conversations = ref.watch(conversationListProvider);
     final activeConversationId = ref.watch(activeConversationIdProvider);
     
+    // Use a post-frame callback to ensure proper initialization
     if (conversations.isEmpty && activeConversationId == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(conversationProvider.notifier).createNewConversation();
+        if (ref.read(conversationListProvider).isEmpty) {
+          ref.read(conversationProvider.notifier).createNewConversation();
+        }
       });
     }
 

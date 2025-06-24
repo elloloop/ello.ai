@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ello_ai/src/models/conversation.dart';
 import 'package:ello_ai/src/models/message.dart';
+import 'package:ello_ai/src/core/dependencies.dart';
 
 void main() {
   group('Conversation Model Tests', () {
@@ -71,6 +73,58 @@ void main() {
       );
       
       expect(conversation.formattedTimestamp, equals('5m ago'));
+    });
+  });
+
+  group('ConversationListNotifier Tests', () {
+    late ProviderContainer container;
+    late ConversationListNotifier notifier;
+
+    setUp(() {
+      container = ProviderContainer();
+      notifier = container.read(conversationListProvider.notifier);
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('auto-generates title from first user message', () {
+      final conversation = Conversation.create(model: 'gpt-3.5-turbo');
+      notifier.addConversation(conversation);
+      
+      final userMessage = Message.user('Hello, how can I create a Flutter app?');
+      notifier.addMessageToConversation(conversation.id, userMessage);
+      
+      final updatedConversations = container.read(conversationListProvider);
+      expect(updatedConversations.first.title, equals('Hello, how can I create a Flutter'));
+    });
+
+    test('does not change title if already customized', () {
+      final conversation = Conversation.create(
+        title: 'Custom Title',
+        model: 'gpt-3.5-turbo',
+      );
+      notifier.addConversation(conversation);
+      
+      final userMessage = Message.user('Hello there');
+      notifier.addMessageToConversation(conversation.id, userMessage);
+      
+      final updatedConversations = container.read(conversationListProvider);
+      expect(updatedConversations.first.title, equals('Custom Title'));
+    });
+
+    test('truncates long titles appropriately', () {
+      final conversation = Conversation.create(model: 'gpt-3.5-turbo');
+      notifier.addConversation(conversation);
+      
+      final userMessage = Message.user('This is a very long message that should be truncated properly at word boundaries when generating a title');
+      notifier.addMessageToConversation(conversation.id, userMessage);
+      
+      final updatedConversations = container.read(conversationListProvider);
+      final title = updatedConversations.first.title;
+      expect(title.length, lessThanOrEqualTo(30));
+      expect(title, equals('This is a very long message'));
     });
   });
 }

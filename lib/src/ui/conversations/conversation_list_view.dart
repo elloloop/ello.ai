@@ -128,14 +128,14 @@ class ConversationListItem extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.secondary.withOpacity(0.2),
+                    color: _getModelBadgeColor(context, conversation.model),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    conversation.model,
+                    _getModelDisplayName(conversation.model),
                     style: TextStyle(
                       fontSize: 10,
-                      color: Theme.of(context).colorScheme.secondary,
+                      color: _getModelTextColor(context, conversation.model),
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -244,5 +244,46 @@ class ConversationListItem extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Color _getModelBadgeColor(BuildContext context, String model) {
+    if (model.contains('gpt-4')) {
+      return Colors.purple.withOpacity(0.2);
+    } else if (model.contains('gpt-3.5')) {
+      return Colors.green.withOpacity(0.2);
+    } else if (model.contains('claude')) {
+      return Colors.orange.withOpacity(0.2);
+    } else if (model.contains('gemini')) {
+      return Colors.blue.withOpacity(0.2);
+    } else if (model.contains('llama')) {
+      return Colors.red.withOpacity(0.2);
+    }
+    return Theme.of(context).colorScheme.secondary.withOpacity(0.2);
+  }
+
+  Color _getModelTextColor(BuildContext context, String model) {
+    if (model.contains('gpt-4')) {
+      return Colors.purple;
+    } else if (model.contains('gpt-3.5')) {
+      return Colors.green;
+    } else if (model.contains('claude')) {
+      return Colors.orange;
+    } else if (model.contains('gemini')) {
+      return Colors.blue;
+    } else if (model.contains('llama')) {
+      return Colors.red;
+    }
+    return Theme.of(context).colorScheme.secondary;
+  }
+
+  String _getModelDisplayName(String model) {
+    // Shorten model names for display
+    if (model == 'gpt-3.5-turbo') return 'GPT-3.5';
+    if (model == 'gpt-4o') return 'GPT-4';
+    if (model == 'claude-3-opus') return 'Claude Opus';
+    if (model == 'claude-3-sonnet') return 'Claude Sonnet';
+    if (model == 'gemini-pro') return 'Gemini';
+    if (model == 'llama-3') return 'Llama-3';
+    return model;
   }
 }

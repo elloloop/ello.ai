@@ -97,10 +97,31 @@ class ConversationListNotifier extends StateNotifier<List<Conversation>> {
     state = state.map((conv) {
       if (conv.id == conversationId) {
         final updatedMessages = [...conv.messages, message];
-        return conv.copyWith(messages: updatedMessages);
+        String newTitle = conv.title;
+        
+        // Auto-generate title from first user message if it's still "New Chat"
+        if (conv.title == 'New Chat' && message.isUser && message.content.trim().isNotEmpty) {
+          newTitle = _generateTitleFromMessage(message.content);
+        }
+        
+        return conv.copyWith(messages: updatedMessages, title: newTitle);
       }
       return conv;
     }).toList();
+  }
+
+  String _generateTitleFromMessage(String content) {
+    // Take first 30 characters and clean them up
+    String title = content.trim();
+    if (title.length > 30) {
+      title = title.substring(0, 30);
+      // Try to break at word boundary
+      final lastSpace = title.lastIndexOf(' ');
+      if (lastSpace > 15) {
+        title = title.substring(0, lastSpace);
+      }
+    }
+    return title;
   }
 
   void appendToLastMessageInConversation(String conversationId, String content) {
