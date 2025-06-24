@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:grpc/grpc.dart';
+import 'package:uuid/uuid.dart';
+import 'dart:async';
 import '../generated/chat.pb.dart' as proto;
 import '../generated/chat.pbgrpc.dart';
 import '../llm_client/chat_client.dart';
@@ -36,19 +38,50 @@ class GrpcConnectionConfig {
 /// STATE NOTIFIERS
 /// ============================================================================
 
-/// Chat history notifier
+/// Chat history notifier with optimized streaming support
 class ChatHistoryNotifier extends StateNotifier<List<Message>> {
   ChatHistoryNotifier() : super([]);
+  
+  final _uuid = const Uuid();
+  Timer? _streamingDebounceTimer;
+  String? _currentStreamingMessageId;
+  bool _disposed = false;
 
   void addUserMessage(String content) {
     state = [...state, Message.user(content)];
   }
 
-  void addAssistantMessage(String content) {
-    state = [...state, Message.assistant(content)];
+  void addAssistantMessage(String content, {bool isStreaming = false}) {
+    final messageId = _uuid.v4();
+    if (isStreaming) {
+      _currentStreamingMessageId = messageId;
+    }
+    state = [...state, Message.assistant(content, isStreaming: isStreaming, id: messageId)];
   }
 
   void appendToLastMessage(String content) {
+    if (state.isEmpty) {
+      addAssistantMessage(content, isStreaming: true);
+      return;
+    }
+
+    final last = state.last;
+    
+    // Cancel any existing debounce timer
+    _streamingDebounceTimer?.cancel();
+    
+    // For rapid streaming updates, debounce to reduce UI rebuilds
+    _streamingDebounceTimer = Timer(const Duration(milliseconds: 16), () {
+      if (mounted) {
+        state = [
+          ...state.sublist(0, state.length - 1),
+          last.appendContent(content)
+        ];
+      }
+    });
+  }
+
+  void appendToLastMessageImmediate(String content) {
     if (state.isEmpty) {
       addAssistantMessage(content);
       return;
@@ -61,8 +94,31 @@ class ChatHistoryNotifier extends StateNotifier<List<Message>> {
     ];
   }
 
+  void finishStreamingMessage() {
+    if (state.isNotEmpty && state.last.isStreaming) {
+      final last = state.last;
+      state = [
+        ...state.sublist(0, state.length - 1),
+        last.copyWith(isStreaming: false)
+      ];
+    }
+    _currentStreamingMessageId = null;
+    _streamingDebounceTimer?.cancel();
+  }
+
   void clear() {
+    _streamingDebounceTimer?.cancel();
+    _currentStreamingMessageId = null;
     state = [];
+  }
+
+  bool get mounted => !_disposed;
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _streamingDebounceTimer?.cancel();
+    super.dispose();
   }
 }
 
@@ -266,14 +322,18 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
   }
 }
 
-/// Chat controller notifier
+/// Chat controller notifier with streaming interruption support
 class ChatController extends StateNotifier<AsyncValue<void>> {
   ChatController(this.ref) : super(const AsyncData(null));
 
   final Ref ref;
+  StreamSubscription<String>? _currentStreamSubscription;
 
   @override
   void dispose() {
+    // Cancel any active stream
+    _currentStreamSubscription?.cancel();
+    
     // Close gRPC channel if the client is a GrpcClient
     final client = ref.read(currentChatClientProvider);
     if (client is GrpcClient) {
@@ -282,8 +342,26 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
     super.dispose();
   }
 
+  /// Cancel the current streaming response if active
+  void cancelCurrentStream() {
+    if (_currentStreamSubscription != null) {
+      Logger.info('Cancelling current streaming response');
+      _currentStreamSubscription?.cancel();
+      _currentStreamSubscription = null;
+      
+      // Mark the last message as finished if it was streaming
+      final chatHistory = ref.read(chatHistoryProvider.notifier);
+      chatHistory.finishStreamingMessage();
+      
+      state = const AsyncData(null);
+    }
+  }
+
   Future<void> sendMessage(String content) async {
     if (content.isEmpty) return;
+
+    // Cancel any existing stream before starting a new one
+    cancelCurrentStream();
 
     final chatHistory = ref.read(chatHistoryProvider.notifier);
     chatHistory.addUserMessage(content);
@@ -341,136 +419,154 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
         }
       }
 
-      await for (final chunk
-          in client.chat(messages: messages, model: selectedModel)) {
-        if (messages.isEmpty || messages.last.isUser) {
-          chatHistory.addAssistantMessage(chunk);
-        } else {
-          chatHistory.appendToLastMessage(chunk);
-        }
-      }
-      state = const AsyncData(null);
-
-      // Reset fail counter on success and update connection status
-      ref.read(connectionFailCounterProvider.notifier).state = 0;
-
-      // Update connection status after successful message
-      Future.microtask(() {
-        if (!isMock) {
-          ref.read(connectionStatusProvider.notifier).setConnected();
-        }
-      });
-    } catch (e) {
-      Logger.error('Error in chat stream: $e');
-
-      // Update connection status to failed for real clients
-      Future.microtask(() {
-        if (!isMock) {
-          ref.read(connectionStatusProvider.notifier).setFailed();
-        }
-      });
-
-      // Check for conversation not found errors and handle them specially
-      if (e.toString().contains('Conversation') &&
-          e.toString().contains('not found')) {
-        Logger.info(
-            'Detected conversation not found error, clearing conversation ID');
-
-        // Clear the conversation ID in the provider
-        ref.read(conversationIdProvider.notifier).clearConversationId();
-
-        // If using gRPC client, reset its conversation ID too
-        if (client is GrpcChatClient) {
-          final grpcClient = ref.read(chatGrpcClientProvider);
-          grpcClient.resetConversation();
-
-          // Try to start a new conversation for next time
-          try {
-            final clientId =
-                'recovery-${DateTime.now().millisecondsSinceEpoch}';
-            await grpcClient.startConversation(clientId: clientId);
-          } catch (startError) {
-            Logger.error('Failed to restart conversation: $startError');
+      bool isFirstChunk = true;
+      
+      // Start the streaming subscription
+      _currentStreamSubscription = client.chat(messages: messages, model: selectedModel).listen(
+        (chunk) {
+          if (isFirstChunk) {
+            chatHistory.addAssistantMessage(chunk, isStreaming: true);
+            isFirstChunk = false;
+          } else {
+            chatHistory.appendToLastMessage(chunk);
           }
-        }
+        },
+        onDone: () {
+          Logger.info('Streaming response completed');
+          chatHistory.finishStreamingMessage();
+          _currentStreamSubscription = null;
+          state = const AsyncData(null);
 
-        // Add a message informing the user
-        chatHistory.addAssistantMessage(
-            'Previous conversation was not found or expired. Starting a new conversation.');
+          // Reset fail counter on success and update connection status
+          ref.read(connectionFailCounterProvider.notifier).state = 0;
 
-        // Don't show additional error messages in this case
-        state = const AsyncData(null);
-        return;
-      }
+          // Update connection status after successful message
+          Future.microtask(() {
+            if (!isMock) {
+              ref.read(connectionStatusProvider.notifier).setConnected();
+            }
+          });
+        },
+        onError: (e) {
+          Logger.error('Error in chat stream: $e');
+          _currentStreamSubscription = null;
+          chatHistory.finishStreamingMessage();
 
-      // Add error message to chat for other types of errors
-      if (messages.isEmpty || messages.last.isUser) {
-        String errorMsg = 'Error: Unable to get response from the server. ';
+          // Update connection status to failed for real clients
+          Future.microtask(() {
+            if (!isMock) {
+              ref.read(connectionStatusProvider.notifier).setFailed();
+            }
+          });
 
-        // Get user-friendly error message if possible
-        if (client is GrpcChatClient) {
-          // Access the underlying ChatGrpcClient to get the friendly error message
-          final chatGrpcClient = ref.read(chatGrpcClientProvider);
-          errorMsg = chatGrpcClient.getUserFriendlyErrorMessage(e);
-        }
-        // Fallback to generic error categorization
-        else if (e.toString().contains('Operation not permitted') ||
-            e.toString().contains('UNAVAILABLE')) {
-          errorMsg += 'The app is unable to connect to the server.\n\n';
-          errorMsg += 'Possible solutions:\n';
-          errorMsg += '1. Check your internet connection\n';
-          errorMsg +=
-              '2. Enable Mock Mode in the debug settings (recommended)\n';
-          errorMsg += '3. Try again later';
+          // Check for conversation not found errors and handle them specially
+          if (e.toString().contains('Conversation') &&
+              e.toString().contains('not found')) {
+            Logger.info(
+                'Detected conversation not found error, clearing conversation ID');
 
-          // If auto-fallback is not enabled, suggest it
-          if (!ref.read(autoFallbackToMockProvider)) {
-            errorMsg +=
-                '\n\nNote: You can enable auto-fallback to Mock Mode in Debug Settings';
-          }
-        } else {
-          // General error case
-          errorMsg += '${e.toString()}\n\n';
-          errorMsg +=
-              'If you\'re seeing connection issues, you can enable Mock Mode in the debug settings.';
-        }
+            // Clear the conversation ID in the provider
+            ref.read(conversationIdProvider.notifier).clearConversationId();
 
-        chatHistory.addAssistantMessage(errorMsg);
-      } else {
-        chatHistory.appendToLastMessage(
-            '\n\nError: Connection interrupted. ${e.toString()}');
-      }
+            // If using gRPC client, reset its conversation ID too
+            if (client is GrpcChatClient) {
+              final grpcClient = ref.read(chatGrpcClientProvider);
+              grpcClient.resetConversation();
 
-      state = AsyncError(e, StackTrace.current);
+              // Try to start a new conversation for next time
+              Future(() async {
+                try {
+                  final clientId =
+                      'recovery-${DateTime.now().millisecondsSinceEpoch}';
+                  await grpcClient.startConversation(clientId: clientId);
+                } catch (startError) {
+                  Logger.error('Failed to restart conversation: $startError');
+                }
+              });
+            }
 
-      // If we're in real mode and we get an error, increment the fail counter
-      if (!isMock) {
-        final currentFailCount = ref.read(connectionFailCounterProvider);
-        ref.read(connectionFailCounterProvider.notifier).state =
-            currentFailCount + 1;
-
-        // Check if we should auto-fallback to mock mode
-        final maxAttempts = ref.read(maxConnectionAttemptsProvider);
-        final shouldAutoFallback = ref.read(autoFallbackToMockProvider);
-
-        Logger.info(
-            'Connection failure count: ${currentFailCount + 1}/$maxAttempts (Auto-fallback: $shouldAutoFallback)');
-
-        if (shouldAutoFallback && currentFailCount + 1 >= maxAttempts) {
-          Logger.info(
-              'Maximum connection failures reached, auto-switching to mock mode');
-
-          // Only toggle if we're not already in mock mode
-          if (!ref.read(useMockGrpcProvider)) {
-            ref.read(useMockGrpcProvider.notifier).toggle();
-
-            // Add a message to inform the user
+            // Add a message informing the user
             chatHistory.addAssistantMessage(
-                'Auto-switched to Mock Mode after $maxAttempts failed connection attempts.\n'
-                'You can change this setting in the debug menu.');
+                'Previous conversation was not found or expired. Starting a new conversation.');
+
+            // Don't show additional error messages in this case
+            state = const AsyncData(null);
+            return;
           }
-        }
-      }
+
+          // Add error message to chat for other types of errors
+          if (messages.isEmpty || messages.last.isUser) {
+            String errorMsg = 'Error: Unable to get response from the server. ';
+
+            // Get user-friendly error message if possible
+            if (client is GrpcChatClient) {
+              // Access the underlying ChatGrpcClient to get the friendly error message
+              final chatGrpcClient = ref.read(chatGrpcClientProvider);
+              errorMsg = chatGrpcClient.getUserFriendlyErrorMessage(e);
+            }
+            // Fallback to generic error categorization
+            else if (e.toString().contains('Operation not permitted') ||
+                e.toString().contains('UNAVAILABLE')) {
+              errorMsg += 'The app is unable to connect to the server.\n\n';
+              errorMsg += 'Possible solutions:\n';
+              errorMsg += '1. Check your internet connection\n';
+              errorMsg +=
+                  '2. Enable Mock Mode in the debug settings (recommended)\n';
+              errorMsg += '3. Try again later';
+
+              // If auto-fallback is not enabled, suggest it
+              if (!ref.read(autoFallbackToMockProvider)) {
+                errorMsg +=
+                    '\n\nNote: You can enable auto-fallback to Mock Mode in Debug Settings';
+              }
+            } else {
+              // General error case
+              errorMsg += '${e.toString()}\n\n';
+              errorMsg +=
+                  'If you\'re seeing connection issues, you can enable Mock Mode in the debug settings.';
+            }
+
+            chatHistory.addAssistantMessage(errorMsg);
+          } else {
+            chatHistory.appendToLastMessageImmediate(
+                '\n\nError: Connection interrupted. ${e.toString()}');
+          }
+
+          state = AsyncError(e, StackTrace.current);
+
+          // If we're in real mode and we get an error, increment the fail counter
+          if (!isMock) {
+            final currentFailCount = ref.read(connectionFailCounterProvider);
+            ref.read(connectionFailCounterProvider.notifier).state =
+                currentFailCount + 1;
+
+            // Check if we should auto-fallback to mock mode
+            final maxAttempts = ref.read(maxConnectionAttemptsProvider);
+            final shouldAutoFallback = ref.read(autoFallbackToMockProvider);
+
+            Logger.info(
+                'Connection failure count: ${currentFailCount + 1}/$maxAttempts (Auto-fallback: $shouldAutoFallback)');
+
+            if (shouldAutoFallback && currentFailCount + 1 >= maxAttempts) {
+              Logger.info(
+                  'Maximum connection failures reached, auto-switching to mock mode');
+
+              // Only toggle if we're not already in mock mode
+              if (!ref.read(useMockGrpcProvider)) {
+                ref.read(useMockGrpcProvider.notifier).toggle();
+
+                // Add a message to inform the user
+                chatHistory.addAssistantMessage(
+                    'Auto-switched to Mock Mode after $maxAttempts failed connection attempts.\n'
+                    'You can change this setting in the debug menu.');
+              }
+            }
+          }
+        },
+      );
+    } catch (e) {
+      Logger.error('Error setting up chat stream: $e');
+      state = AsyncError(e, StackTrace.current);
     }
   }
 
