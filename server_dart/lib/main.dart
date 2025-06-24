@@ -139,22 +139,22 @@ Future<void> main(List<String> args) async {
   try {
     final results = parser.parse(args);
 
-    if (results['help']) {
-      print('Usage: dart run bin/main.dart [options]');
-      print(parser.usage);
-      return;
-    }
-
-    final port = int.parse(results['port']);
-    final host = results['host'];
-
-    // Setup logging
+    // Setup logging first
     Logger.root.level = Level.ALL;
     Logger.root.onRecord.listen((record) {
       print('${record.level.name}: ${record.time}: ${record.message}');
     });
 
     final logger = Logger('Main');
+
+    if (results['help']) {
+      logger.info('Usage: dart run bin/main.dart [options]');
+      logger.info(parser.usage);
+      return;
+    }
+
+    final port = int.parse(results['port']);
+    final host = results['host'];
 
     // Create the gRPC server
     final server = Server.create(services: [ChatServiceImpl()]);
@@ -171,9 +171,10 @@ Future<void> main(List<String> args) async {
 
     // Keep the server running
   } catch (e) {
-    print('Error: $e');
-    print('Usage: dart run bin/main.dart [options]');
-    print(parser.usage);
+    final logger = Logger('Main');
+    logger.severe('Error: $e');
+    logger.info('Usage: dart run bin/main.dart [options]');
+    logger.info(parser.usage);
     exit(1);
   }
 }
