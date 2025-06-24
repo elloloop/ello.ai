@@ -11,4 +11,20 @@ class Message {
 
   Message appendContent(String chunk) =>
       Message(content: content + chunk, isUser: isUser);
+
+  /// Convert to JSON for storage
+  Map<String, dynamic> toJson() {
+    return {
+      'content': content,
+      'isUser': isUser,
+    };
+  }
+
+  /// Create from JSON
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message(
+      content: json['content'] as String,
+      isUser: json['isUser'] as bool,
+    );
+  }
 }
