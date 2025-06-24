@@ -1,0 +1,27 @@
+# Coverage configuration for ello.AI Flutter app
+# This file specifies which files should be excluded from coverage reporting
+
+# Generated files should be excluded from coverage
+lib/src/generated/**
+lib/**/*.g.dart
+lib/**/*.freezed.dart
+
+# Platform-specific files
+android/**
+ios/**
+linux/**
+macos/**
+web/**
+windows/**
+
+# Main entry point (usually just boilerplate)
+lib/main.dart
+
+# Test files themselves
+test/**
+test_driver/**
+integration_test/**
+
+# Build artifacts
+build/**
+.dart_tool/**
