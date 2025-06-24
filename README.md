@@ -18,11 +18,17 @@
 
 - Runs natively on Web, macOS, Windows, Linux, iOS and Android
 - Single codebase maintained in Flutter 3.22 and Dart 3
+- **Comprehensive Model & API Key Management**:
+  - Settings panel with grouped model display by provider
+  - Support for multiple AI providers: OpenAI, Anthropic, Google, Meta
+  - Real-time API key validation with inline error feedback
+  - Intelligent model filtering based on configured keys
+  - Secure key management with visibility controls
 - Model picker dropdown with presets for:
-  - OpenAI (GPT‑3.5 Turbo, GPT‑4o)
-  - Anthropic Claude 3
-  - Google Gemini 1.5
-  - Meta Llama 3 (OpenAI compatible endpoint)
+  - OpenAI (GPT‑3.5 Turbo, GPT‑4o, GPT-4 Turbo, GPT-4)
+  - Anthropic Claude 3 (Opus, Sonnet, Haiku)
+  - Google Gemini (Pro, 1.5 Pro)
+  - Meta Llama 3 & 2 (OpenAI compatible endpoint)
   - Local GGUF models served over llama.cpp or Ollama
 - Streaming markdown output with syntax highlighted code blocks
 - Conversation memory with local searchable history
@@ -56,17 +62,33 @@ flutter run -d emulator-5554
 
 ### Configuring API keys
 
+You can configure API keys in two ways:
+
+#### Option 1: Environment Variables
 Create a `.env` file at the project root:
 
 ```dotenv
 OPENAI_API_KEY=sk-...
-ANTHROPIC_API_KEY=...
-GEMINI_API_KEY=...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_API_KEY=...
+META_API_KEY=...
 LLAMA_ENDPOINT=http://localhost:11434
 ```
 
-Keys can also be added through the in-app settings panel.
-If no `OPENAI_API_KEY` is provided, the app uses a built-in mock model for local testing.
+#### Option 2: In-App Settings Panel (Recommended)
+1. Launch the app
+2. Click the settings icon (⚙️) next to the model picker
+3. Enter your API keys for the providers you want to use
+4. Keys are validated in real-time with provider-specific rules
+5. Only models from providers with valid keys will be available
+
+**Key Benefits of In-App Management:**
+- Real-time validation with clear error messages
+- Visual feedback showing available models per provider
+- Secure key handling with visibility controls
+- Easy key removal and management
+
+If no API keys are configured, the app uses a built-in mock model for local testing.
 
 ## Architecture
 
