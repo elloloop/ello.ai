@@ -539,15 +539,133 @@ class ConversationIdNotifier extends StateNotifier<String?> {
 final modelProvider =
     StateNotifierProvider<ModelNotifier, String>((ref) => ModelNotifier());
 
-/// Available models provider
-final availableModelsProvider = Provider<List<String>>((ref) => [
-      'gpt-3.5-turbo',
-      'gpt-4o',
-      'claude-3-opus',
-      'claude-3-sonnet',
-      'gemini-pro',
-      'llama-3'
+/// Model provider configuration
+class ModelProvider {
+  final String id;
+  final String name;
+  final List<String> models;
+  final String apiKeyName;
+  final String Function(String)? validateKey;
+
+  const ModelProvider({
+    required this.id,
+    required this.name,
+    required this.models,
+    required this.apiKeyName,
+    this.validateKey,
+  });
+}
+
+/// Available model providers
+final modelProvidersProvider = Provider<List<ModelProvider>>((ref) => [
+      ModelProvider(
+        id: 'openai',
+        name: 'OpenAI',
+        models: ['gpt-3.5-turbo', 'gpt-4o', 'gpt-4-turbo', 'gpt-4'],
+        apiKeyName: 'OpenAI API Key',
+        validateKey: (key) => key.startsWith('sk-') ? '' : 'OpenAI keys must start with "sk-"',
+      ),
+      ModelProvider(
+        id: 'anthropic',
+        name: 'Anthropic',
+        models: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
+        apiKeyName: 'Anthropic API Key',
+        validateKey: (key) => key.startsWith('sk-ant-') ? '' : 'Anthropic keys must start with "sk-ant-"',
+      ),
+      ModelProvider(
+        id: 'google',
+        name: 'Google',
+        models: ['gemini-pro', 'gemini-1.5-pro'],
+        apiKeyName: 'Google API Key',
+        validateKey: (key) => key.length > 30 ? '' : 'Google API key appears to be too short',
+      ),
+      ModelProvider(
+        id: 'meta',
+        name: 'Meta',
+        models: ['llama-3', 'llama-2'],
+        apiKeyName: 'Meta/Llama API Key',
+      ),
     ]);
+
+/// Legacy available models provider (for backward compatibility)
+final availableModelsProvider = Provider<List<String>>((ref) {
+  final providers = ref.watch(modelProvidersProvider);
+  final apiKeys = ref.watch(apiKeysProvider);
+  
+  // If no API keys are configured, show all models
+  if (apiKeys.values.every((key) => key.isEmpty)) {
+    return providers.expand((provider) => provider.models).toList();
+  }
+  
+  // Otherwise, only show models for providers with valid keys
+  final availableModels = <String>[];
+  for (final provider in providers) {
+    final key = apiKeys[provider.id] ?? '';
+    if (key.isNotEmpty) {
+      // Validate key if validator exists
+      if (provider.validateKey != null) {
+        final validationError = provider.validateKey!(key);
+        if (validationError.isEmpty) {
+          availableModels.addAll(provider.models);
+        }
+      } else {
+        // No validation, assume valid if not empty
+        availableModels.addAll(provider.models);
+      }
+    }
+  }
+  
+  return availableModels;
+});
+
+/// API Keys Management
+class ApiKeysNotifier extends StateNotifier<Map<String, String>> {
+  ApiKeysNotifier() : super({
+    'openai': const String.fromEnvironment('OPENAI_API_KEY', defaultValue: ''),
+    'anthropic': const String.fromEnvironment('ANTHROPIC_API_KEY', defaultValue: ''),
+    'google': const String.fromEnvironment('GOOGLE_API_KEY', defaultValue: ''),
+    'meta': const String.fromEnvironment('META_API_KEY', defaultValue: ''),
+  });
+
+  void setApiKey(String providerId, String key) {
+    state = {...state, providerId: key};
+  }
+
+  void removeApiKey(String providerId) {
+    state = {...state, providerId: ''};
+  }
+
+  String? getApiKey(String providerId) {
+    return state[providerId];
+  }
+
+  bool hasValidKey(String providerId) {
+    final key = state[providerId] ?? '';
+    return key.isNotEmpty;
+  }
+}
+
+/// API Keys provider
+final apiKeysProvider =
+    StateNotifierProvider<ApiKeysNotifier, Map<String, String>>((ref) => ApiKeysNotifier());
+
+/// API Key validation results provider
+final apiKeyValidationProvider = Provider<Map<String, String>>((ref) {
+  final apiKeys = ref.watch(apiKeysProvider);
+  final providers = ref.watch(modelProvidersProvider);
+  final validationResults = <String, String>{};
+  
+  for (final provider in providers) {
+    final key = apiKeys[provider.id] ?? '';
+    if (key.isNotEmpty && provider.validateKey != null) {
+      validationResults[provider.id] = provider.validateKey!(key);
+    } else {
+      validationResults[provider.id] = '';
+    }
+  }
+  
+  return validationResults;
+});
 
 /// gRPC host provider
 final grpcHostProvider = StateNotifierProvider<GrpcHostNotifier, String>(
