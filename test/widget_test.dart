@@ -10,6 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ello_ai/main.dart';
 import 'package:ello_ai/src/core/dependencies.dart';
+import 'package:ello_ai/src/ui/home_page.dart';
 
 void main() {
   group('ElloApp Widget Tests', () {
@@ -20,6 +21,7 @@ void main() {
             .overrideWith((ref) => ConnectionStatusNotifier()..setConnected()),
         useMockGrpcProvider.overrideWith((ref) => MockGrpcNotifier()..toggle()),
         modelProvider.overrideWith((ref) => ModelNotifier()),
+        systemPromptProvider.overrideWith((ref) => SystemPromptNotifier()),
         availableModelsProvider
             .overrideWith((ref) => ['gpt-3.5-turbo', 'gpt-4o']),
         isDebugModeProvider.overrideWith((ref) => true),
@@ -82,6 +84,59 @@ void main() {
       final container = makeMockedContainer();
       await pumpApp(tester, container);
       expect(find.byType(ListView), findsOneWidget);
+    });
+
+    testWidgets('System prompt override section is present',
+        (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      
+      // Look for the system prompt expansion tile
+      expect(find.text('System Prompt Override'), findsOneWidget);
+      expect(find.byType(ExpansionTile), findsOneWidget);
+      
+      // Tap to expand the system prompt section
+      await tester.tap(find.text('System Prompt Override'));
+      await tester.pumpAndSettle();
+      
+      // Check that the text field appears
+      expect(find.text('Enter custom system prompt (optional)...'), findsOneWidget);
+      expect(find.text('Clear'), findsOneWidget);
+    });
+
+    testWidgets('System prompt can be entered and cleared',
+        (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      
+      // Expand the system prompt section
+      await tester.tap(find.text('System Prompt Override'));
+      await tester.pumpAndSettle();
+      
+      // Find the system prompt text field
+      final systemPromptField = find.byType(SystemPromptTextField);
+      expect(systemPromptField, findsOneWidget);
+      
+      // Also check for the actual TextField inside
+      final textField = find.descendant(
+        of: systemPromptField,
+        matching: find.byType(TextField),
+      );
+      expect(textField, findsOneWidget);
+      
+      // Enter some text in the actual TextField
+      await tester.enterText(textField, 'Test system prompt');
+      await tester.pumpAndSettle();
+      
+      // Check that the "Active" indicator appears
+      expect(find.text('Active'), findsOneWidget);
+      
+      // Clear the system prompt
+      await tester.tap(find.text('Clear'));
+      await tester.pumpAndSettle();
+      
+      // Check that the "Active" indicator disappears
+      expect(find.text('Active'), findsNothing);
     });
   });
 }

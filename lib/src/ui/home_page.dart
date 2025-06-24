@@ -266,19 +266,11 @@ class HomePage extends ConsumerWidget {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                           const SizedBox(height: 8),
-                          TextField(
-                            maxLines: 3,
-                            decoration: const InputDecoration(
-                              hintText: 'Enter custom system prompt (optional)...',
-                              border: OutlineInputBorder(),
-                            ),
+                          SystemPromptTextField(
+                            initialValue: systemPrompt,
                             onChanged: (value) {
                               ref.read(systemPromptProvider.notifier).setSystemPrompt(value);
                             },
-                            controller: TextEditingController(text: systemPrompt)
-                              ..selection = TextSelection.fromPosition(
-                                TextPosition(offset: systemPrompt.length),
-                              ),
                           ),
                           const SizedBox(height: 8),
                           Row(
@@ -335,6 +327,58 @@ class HomePage extends ConsumerWidget {
           )
         ],
       ),
+    );
+  }
+}
+
+/// A StatefulWidget for managing the system prompt text field
+class SystemPromptTextField extends StatefulWidget {
+  final String initialValue;
+  final ValueChanged<String> onChanged;
+
+  const SystemPromptTextField({
+    super.key,
+    required this.initialValue,
+    required this.onChanged,
+  });
+
+  @override
+  State<SystemPromptTextField> createState() => _SystemPromptTextFieldState();
+}
+
+class _SystemPromptTextFieldState extends State<SystemPromptTextField> {
+  late TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void didUpdateWidget(SystemPromptTextField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialValue != oldWidget.initialValue) {
+      _controller.text = widget.initialValue;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      maxLines: 3,
+      decoration: const InputDecoration(
+        hintText: 'Enter custom system prompt (optional)...',
+        border: OutlineInputBorder(),
+      ),
+      onChanged: widget.onChanged,
     );
   }
 }
