@@ -11,8 +11,10 @@ import '../llm_client/grpc_client.dart';
 import '../llm_client/mock_grpc_client.dart';
 import '../llm_client/grpc_chat_client.dart';
 import '../models/message.dart';
+import '../models/conversation.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
+import '../providers/conversation_providers.dart';
 import '../utils/logger.dart';
 
 /// ============================================================================
@@ -36,16 +38,20 @@ class GrpcConnectionConfig {
 /// STATE NOTIFIERS
 /// ============================================================================
 
-/// Chat history notifier
+/// Chat history notifier that syncs with conversation storage
 class ChatHistoryNotifier extends StateNotifier<List<Message>> {
-  ChatHistoryNotifier() : super([]);
+  ChatHistoryNotifier(this.ref) : super([]);
+
+  final Ref ref;
 
   void addUserMessage(String content) {
     state = [...state, Message.user(content)];
+    _syncWithActiveConversation();
   }
 
   void addAssistantMessage(String content) {
     state = [...state, Message.assistant(content)];
+    _syncWithActiveConversation();
   }
 
   void appendToLastMessage(String content) {
@@ -59,10 +65,35 @@ class ChatHistoryNotifier extends StateNotifier<List<Message>> {
       ...state.sublist(0, state.length - 1),
       last.appendContent(content)
     ];
+    _syncWithActiveConversation();
   }
 
   void clear() {
     state = [];
+    _syncWithActiveConversation();
+  }
+
+  /// Load messages from the active conversation
+  void loadFromActiveConversation() {
+    final activeConversation = ref.read(activeConversationProvider);
+    if (activeConversation != null) {
+      state = activeConversation.messages;
+    } else {
+      state = [];
+    }
+  }
+
+  /// Sync current messages with the active conversation
+  Future<void> _syncWithActiveConversation() async {
+    final activeConversationId = ref.read(activeConversationIdProvider);
+    if (activeConversationId != null) {
+      try {
+        await ref.read(conversationsProvider.notifier)
+            .updateConversationMessages(activeConversationId, state);
+      } catch (e) {
+        Logger.error('Error syncing with active conversation: $e');
+      }
+    }
   }
 }
 
@@ -284,6 +315,9 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
 
   Future<void> sendMessage(String content) async {
     if (content.isEmpty) return;
+
+    // Ensure we have an active conversation
+    await _ensureActiveConversation();
 
     final chatHistory = ref.read(chatHistoryProvider.notifier);
     chatHistory.addUserMessage(content);
@@ -514,6 +548,23 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
       chatHistory.addAssistantMessage('Error resetting conversation: $e');
     }
   }
+
+  /// Ensure we have an active conversation before sending messages
+  Future<void> _ensureActiveConversation() async {
+    final activeConversationId = ref.read(activeConversationIdProvider);
+    
+    if (activeConversationId == null) {
+      // Create a new conversation
+      try {
+        final conversationNotifier = ref.read(conversationsProvider.notifier);
+        await conversationNotifier.getOrCreateDefaultConversation();
+        Logger.info('Created default conversation for message sending');
+      } catch (e) {
+        Logger.error('Error creating default conversation: $e');
+        // Continue anyway - the old system will handle it
+      }
+    }
+  }
 }
 
 /// Conversation ID notifier
@@ -597,11 +648,23 @@ final currentChatClientProvider =
 /// Chat history provider
 final chatHistoryProvider =
     StateNotifierProvider<ChatHistoryNotifier, List<Message>>(
-        (ref) => ChatHistoryNotifier());
+        (ref) => ChatHistoryNotifier(ref));
 
 /// Chat controller provider
 final chatProvider = StateNotifierProvider<ChatController, AsyncValue<void>>(
     (ref) => ChatController(ref));
+
+/// Provider that watches for active conversation changes and loads messages
+final conversationSyncProvider = Provider<void>((ref) {
+  // Listen to active conversation changes
+  ref.listen(activeConversationIdProvider, (prev, next) {
+    if (prev != next) {
+      // Load messages from the new active conversation
+      final chatHistory = ref.read(chatHistoryProvider.notifier);
+      chatHistory.loadFromActiveConversation();
+    }
+  });
+});
 
 /// gRPC client provider
 final chatGrpcClientProvider = Provider<ChatGrpcClient>((ref) {
