@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dependencies.dart';
 import '../../services/chat_service_client.dart';
+import '../../services/mcp_health_service.dart';
 
 /// A widget that displays debug settings only in debug mode
 class DebugSettingsButton extends ConsumerWidget {
@@ -91,6 +92,74 @@ class DebugSettingsDialog extends ConsumerWidget {
                       : Colors.green,
                   fontWeight: FontWeight.bold,
                 ),
+              );
+            }),
+
+            const Divider(),
+
+            // MCP Connection Information
+            Text(
+              'MCP Connection:',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            Consumer(builder: (context, ref, _) {
+              final mcpMode = ref.watch(mcpConnectionModeProvider);
+              final latency = ref.watch(mcpLatencyProvider);
+              final latencyStatus = ref.watch(mcpLatencyStatusProvider);
+              
+              Color statusColor;
+              switch (latencyStatus) {
+                case LatencyStatus.good:
+                  statusColor = Colors.green;
+                  break;
+                case LatencyStatus.medium:
+                  statusColor = Colors.amber;
+                  break;
+                case LatencyStatus.poor:
+                  statusColor = Colors.red;
+                  break;
+                case LatencyStatus.offline:
+                  statusColor = Colors.grey;
+                  break;
+              }
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Mode: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        mcpMode == McpConnectionMode.local ? 'LOCAL' : 'REMOTE',
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          color: mcpMode == McpConnectionMode.local ? Colors.blue : Colors.orange,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Text(
+                        'Latency: ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        latency != null ? '${latency}ms (${latencyStatus.displayName})' : latencyStatus.displayName,
+                        style: TextStyle(
+                          fontFamily: 'monospace',
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               );
             }),
 

@@ -14,6 +14,7 @@ import '../models/message.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
 import '../utils/logger.dart';
+import '../services/mcp_health_service.dart';
 
 /// ============================================================================
 /// CONFIGURATION MODELS
@@ -893,4 +894,104 @@ final chatServiceClientProvider = Provider<ChatServiceClient>((ref) {
 
   // Create and return the client
   return ChatServiceClient(channel);
+});
+
+/// ============================================================================
+/// MCP (Model Control Protocol) PROVIDERS
+/// ============================================================================
+
+/// Last used remote URL provider
+final lastUsedRemoteUrlProvider = StateProvider<String>((ref) {
+  // Default to production URL
+  return 'grpc-server-4rwujpfquq-uc.a.run.app';
+});
+
+/// MCP connection mode provider (local or remote)
+enum McpConnectionMode { local, remote }
+
+/// Current MCP connection mode
+final mcpConnectionModeProvider = StateProvider<McpConnectionMode>((ref) {
+  return McpConnectionMode.remote; // Default to remote
+});
+
+/// MCP latency provider - tracks the current latency
+final mcpLatencyProvider = StateProvider<int?>((ref) => null);
+
+/// MCP latency status provider
+final mcpLatencyStatusProvider = Provider<LatencyStatus>((ref) {
+  final latency = ref.watch(mcpLatencyProvider);
+  if (latency == null) {
+    return LatencyStatus.offline;
+  }
+  return McpHealthService.getLatencyStatus(latency);
+});
+
+/// MCP health check provider
+final mcpHealthCheckProvider = FutureProvider.autoDispose((ref) async {
+  return await McpHealthService.checkLocalHealth();
+});
+
+/// Auto MCP mode selection provider - checks local then falls back to remote
+final autoMcpModeProvider = FutureProvider.autoDispose((ref) async {
+  // First, try to check local health
+  final localLatency = await McpHealthService.checkLocalHealth();
+  
+  if (localLatency != null) {
+    // Local is available, use it
+    Logger.info('Local MCP server available with ${localLatency}ms latency');
+    ref.read(mcpConnectionModeProvider.notifier).state = McpConnectionMode.local;
+    ref.read(mcpLatencyProvider.notifier).state = localLatency;
+    
+    // Update gRPC settings for local
+    ref.read(grpcHostProvider.notifier).updateHost('localhost');
+    ref.read(grpcPortProvider.notifier).setForDebug();
+    ref.read(grpcSecureProvider.notifier).setSecure(false);
+    
+    return McpConnectionMode.local;
+  } else {
+    // Local is not available, fall back to remote
+    Logger.info('Local MCP server not available, falling back to remote');
+    final lastUsedRemoteUrl = ref.read(lastUsedRemoteUrlProvider);
+    
+    ref.read(mcpConnectionModeProvider.notifier).state = McpConnectionMode.remote;
+    ref.read(mcpLatencyProvider.notifier).state = null; // Will be measured later
+    
+    // Update gRPC settings for remote
+    ref.read(grpcHostProvider.notifier).updateHost(lastUsedRemoteUrl);
+    ref.read(grpcPortProvider.notifier).setForProduction();
+    ref.read(grpcSecureProvider.notifier).setSecure(true);
+    
+    return McpConnectionMode.remote;
+  }
+});
+
+/// Provider to periodically check MCP health when in local mode
+final mcpHealthMonitorProvider = StreamProvider.autoDispose((ref) async* {
+  final mode = ref.watch(mcpConnectionModeProvider);
+  
+  if (mode == McpConnectionMode.local) {
+    while (true) {
+      await Future.delayed(const Duration(seconds: 30)); // Check every 30 seconds
+      
+      final latency = await McpHealthService.checkLocalHealth();
+      if (latency != null) {
+        ref.read(mcpLatencyProvider.notifier).state = latency;
+        yield latency;
+      } else {
+        // Local server went down, switch to remote
+        Logger.warning('Local MCP server became unavailable, switching to remote');
+        ref.read(mcpConnectionModeProvider.notifier).state = McpConnectionMode.remote;
+        ref.read(mcpLatencyProvider.notifier).state = null;
+        
+        // Update gRPC settings for remote fallback
+        final lastUsedRemoteUrl = ref.read(lastUsedRemoteUrlProvider);
+        ref.read(grpcHostProvider.notifier).updateHost(lastUsedRemoteUrl);
+        ref.read(grpcPortProvider.notifier).setForProduction();
+        ref.read(grpcSecureProvider.notifier).setSecure(true);
+        
+        yield -1; // Indicate failure
+        break;
+      }
+    }
+  }
 });
