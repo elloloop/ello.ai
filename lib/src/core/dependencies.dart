@@ -13,6 +13,7 @@ import '../llm_client/grpc_chat_client.dart';
 import '../models/message.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
+import '../services/api_key_vault.dart';
 import '../utils/logger.dart';
 
 /// ============================================================================
@@ -161,8 +162,9 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
 
     if (useDirectApi) {
       // Use direct API connection (OpenAI)
-      const key = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
-      return key.isEmpty ? MockClient() : OpenAIClient(key);
+      // Start with MockClient, will be updated once API key is loaded
+      Logger.info('Direct API mode enabled, will load API key from secure storage');
+      return MockClient();
     } else if (useMock) {
       // Use mock client when explicitly requested
       Logger.info('Using mock gRPC client as requested (useMock: true)');
@@ -196,7 +198,7 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
     }
   }
 
-  void updateClient() {
+  void updateClient() async {
     final useDirectApi = ref.read(useDirectApiProvider);
     final useMock = ref.read(useMockGrpcProvider);
     final host = ref.read(grpcHostProvider);
@@ -222,10 +224,20 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
 
     if (useDirectApi) {
       // Use direct API connection (OpenAI)
-      const key = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
-      state = key.isEmpty ? MockClient() : OpenAIClient(key);
-      Logger.info(
-          'Selected client: ${key.isEmpty ? "MockClient" : "OpenAIClient"}');
+      try {
+        final apiKey = await ref.read(openaiApiKeyProvider.future);
+        if (apiKey != null && apiKey.isNotEmpty) {
+          state = OpenAIClient(apiKey);
+          Logger.info('Selected client: OpenAIClient (API key loaded from secure storage)');
+        } else {
+          state = MockClient();
+          Logger.info('Selected client: MockClient (no API key found in secure storage)');
+        }
+      } catch (e) {
+        Logger.error('Failed to load API key from secure storage: $e');
+        state = MockClient();
+        Logger.info('Selected client: MockClient (fallback due to API key error)');
+      }
     } else {
       // Use gRPC connection (default)
       // Use mock client for testing when requested
@@ -569,6 +581,17 @@ final useMockGrpcProvider =
 final useDirectApiProvider = StateNotifierProvider<DirectApiNotifier, bool>(
     (ref) => DirectApiNotifier());
 
+/// API Key Vault provider
+final apiKeyVaultProvider = FutureProvider<ApiKeyVault>((ref) async {
+  return await ApiKeyVault.create();
+});
+
+/// OpenAI API Key provider
+final openaiApiKeyProvider = FutureProvider<String?>((ref) async {
+  final vault = await ref.watch(apiKeyVaultProvider.future);
+  return await vault.getOpenAIKey();
+});
+
 /// gRPC Web mode provider
 // No longer needed as we only use standard gRPC with TLS for Cloud Run
 
@@ -590,6 +613,7 @@ final currentChatClientProvider =
   ref.listen(grpcHostProvider, (_, __) => notifier.updateClient());
   ref.listen(grpcPortProvider, (_, __) => notifier.updateClient());
   ref.listen(grpcSecureProvider, (_, __) => notifier.updateClient());
+  ref.listen(openaiApiKeyProvider, (_, __) => notifier.updateClient());
 
   return notifier;
 });
@@ -781,15 +805,20 @@ final initConnectionStatusProvider = Provider<void>((ref) {
   final client = ref.watch(currentChatClientProvider);
 
   // Update connection status after provider initialization
-  Future.microtask(() {
+  Future.microtask(() async {
     if (useMock) {
       ref.read(connectionStatusProvider.notifier).setConnected();
     } else if (useDirectApi) {
-      const key = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
-      if (key.isEmpty) {
+      try {
+        final apiKey = await ref.read(openaiApiKeyProvider.future);
+        if (apiKey != null && apiKey.isNotEmpty) {
+          ref.read(connectionStatusProvider.notifier).setConnected();
+        } else {
+          ref.read(connectionStatusProvider.notifier).setDisconnected();
+        }
+      } catch (e) {
+        Logger.error('Failed to check API key for connection status: $e');
         ref.read(connectionStatusProvider.notifier).setDisconnected();
-      } else {
-        ref.read(connectionStatusProvider.notifier).setConnected();
       }
     } else {
       // Check if client is GrpcChatClient
