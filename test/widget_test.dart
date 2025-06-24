@@ -29,7 +29,7 @@ void main() {
             .overrideWith((ref) => GrpcPortNotifier()..updatePort(1234)),
         grpcSecureProvider
             .overrideWith((ref) => GrpcSecureNotifier()..setSecure(false)),
-        initConnectionStatusProvider.overrideWith((ref) => null),
+        initConnectionStatusProvider.overrideWith((ref) {}),
         // Add more overrides as needed for other providers
       ]);
     }

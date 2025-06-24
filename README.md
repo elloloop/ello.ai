@@ -210,7 +210,7 @@ The server listens on port 50051 by default and provides an echo service for tes
 This project uses GitHub Actions for continuous integration. Every pull request triggers:
 
 - **Flutter Checks**: Linting, formatting, and tests
-- **Go Server Checks**: Formatting, vetting, and tests  
+- **Go Server Checks**: Formatting, vetting, and tests
 - **Build Verification**: Ensures all platforms compile
 - **Security Scanning**: Vulnerability detection
 
@@ -227,12 +227,14 @@ This script runs the same checks as the CI pipeline locally, saving time and pre
 #### Branch Protection
 
 The `main` branch is protected and requires:
+
 - All status checks to pass
 - At least one approval
 - Conversation resolution
 
-See [`docs/BRANCH_PROTECTION_SETUP.md`](docs/BRANCH_PROTECTION_SETUP.md) for detailed setup instructions.
+Branch protection is configured and enforced automatically via GitHub settings.
 
 ## License
 
 MIT. See `LICENSE` for the full text.
+# Test comment

@@ -4,12 +4,13 @@ import 'dart:math' as math;
 import '../generated/chat.pbgrpc.dart';
 import 'package:uuid/uuid.dart';
 import '../models/message.dart';
+import '../utils/logger.dart';
 
 class ChatGrpcClient {
   ChatServiceClient? _client;
   ClientChannel? _channel;
   bool _isCloudRun = false;
-  final Uuid _uuid = Uuid(); // For generating message IDs
+  static const Uuid _uuid = Uuid(); // For generating message IDs
   String? _currentConversationId;
   int _recoveryAttempts = 0;
   final int _maxRecoveryAttempts = 3;
@@ -26,7 +27,7 @@ class ChatGrpcClient {
     bool secure = false,
     int retryAttempts = 2,
   }) async {
-    print('Initializing gRPC client: $host:$port (secure: $secure)');
+    Logger.info('Initializing gRPC client: $host:$port (secure: $secure)');
 
     try {
       // Close any existing channel first
@@ -35,7 +36,8 @@ class ChatGrpcClient {
       // Special handling for Cloud Run servers
       _isCloudRun = host.contains('run.app');
       if (_isCloudRun && port == 443) {
-        print('Detected Cloud Run service, applying specialized configuration');
+        Logger.info(
+            'Detected Cloud Run service, applying specialized configuration');
         secure = true; // Force secure connection for Cloud Run
       }
 
@@ -65,7 +67,7 @@ class ChatGrpcClient {
 
       while (attempts < retryAttempts && !connected) {
         try {
-          print(
+          Logger.info(
               'Testing gRPC connection (attempt ${attempts + 1}/$retryAttempts)...');
           await _channel!.getConnection().timeout(
             const Duration(seconds: 5),
@@ -74,39 +76,39 @@ class ChatGrpcClient {
             },
           );
           connected = true;
-          print('gRPC connection test successful!');
+          Logger.info('gRPC connection test successful!');
         } catch (e) {
           lastError = e is Exception ? e : Exception(e.toString());
-          print('Connection attempt ${attempts + 1} failed: $e');
+          Logger.info('Connection attempt ${attempts + 1} failed: $e');
 
           // Log more specific information about common error types
           if (e.toString().contains('Operation not permitted')) {
-            print(
+            Logger.info(
                 'This error often occurs due to network restrictions or firewall settings.');
-            print(
+            Logger.info(
                 'Consider using Mock Mode if you\'re unable to resolve network issues.');
           } else if (e.toString().contains('UNAVAILABLE')) {
-            print('The server appears to be unavailable or unreachable.');
-            print(
+            Logger.info('The server appears to be unavailable or unreachable.');
+            Logger.info(
                 'Check that the server is running and accessible from your network.');
           }
 
           attempts++;
 
           if (attempts < retryAttempts) {
-            print('Retrying in 1 second...');
+            Logger.info('Retrying in 1 second...');
             await Future.delayed(const Duration(seconds: 1));
           }
         }
       }
 
       if (!connected) {
-        print('All connection attempts failed');
+        Logger.info('All connection attempts failed');
         throw lastError ??
             Exception('Failed to connect after $retryAttempts attempts');
       }
     } catch (e) {
-      print('Error initializing gRPC client: $e');
+      Logger.info('Error initializing gRPC client: $e');
       rethrow;
     }
   }
@@ -119,7 +121,7 @@ class ChatGrpcClient {
     bool secure = false,
     int retryAttempts = 2,
   }) async {
-    print(
+    Logger.info(
         'Note: gRPC-Web support has been removed, using standard gRPC for Cloud Run');
 
     // Just use regular gRPC with TLS for Cloud Run
@@ -137,22 +139,22 @@ class ChatGrpcClient {
         await _channel!.shutdown();
         _channel = null;
         _client = null;
-        print('gRPC channel shut down successfully');
+        Logger.info('gRPC channel shut down successfully');
       }
     } catch (e) {
-      print('Error shutting down gRPC channel: $e');
+      Logger.info('Error shutting down gRPC channel: $e');
     }
   }
 
   Stream<ChatMessage> chatStream(List<Message> messages) {
     try {
       if (_client == null) {
-        print('gRPC client not initialized, returning error stream');
+        Logger.info('gRPC client not initialized, returning error stream');
         return Stream.error(
             Exception('gRPC client not initialized. Call init() first.'));
       }
 
-      print('Creating chat stream with ${messages.length} messages');
+      Logger.info('Creating chat stream with ${messages.length} messages');
 
       // Reset recovery counter for new conversation
       _resetRecoveryCounter();
@@ -183,21 +185,21 @@ class ChatGrpcClient {
         conversationId: _currentConversationId ?? '',
       );
 
-      print('Preparing to send message: ${chatMessage.content}');
+      Logger.info('Preparing to send message: ${chatMessage.content}');
 
       // If no conversation ID exists yet, start a new conversation first
       if (_currentConversationId == null || _currentConversationId!.isEmpty) {
-        print('No active conversation, starting a new one first');
+        Logger.info('No active conversation, starting a new one first');
         _startConversationAndChat(chatMessage, controller);
       } else {
-        print('Using existing conversation ID: $_currentConversationId');
+        Logger.info('Using existing conversation ID: $_currentConversationId');
         // We already have a conversation ID, so just chat
         _sendChatMessage(chatMessage, controller);
       }
 
       // Add error handling for the controller's events
       controller.onCancel = () {
-        print('Stream controller was canceled by the listener');
+        Logger.info('Stream controller was canceled by the listener');
         // Ensure we don't try to use the controller after it's closed
         _resetRecoveryCounter(); // Reset the recovery counter when stream is cancelled
       };
@@ -207,15 +209,15 @@ class ChatGrpcClient {
       return controller.stream.transform(
         StreamTransformer<ChatMessage, ChatMessage>.fromHandlers(
             handleDone: (sink) {
-          print('Stream marked as done');
+          Logger.info('Stream marked as done');
           sink.close();
         }, handleError: (error, stackTrace, sink) {
-          print('Error in stream: $error');
+          Logger.info('Error in stream: $error');
           sink.addError(error, stackTrace);
         }),
       );
     } catch (e) {
-      print('Error creating chat stream: $e');
+      Logger.info('Error creating chat stream: $e');
       return Stream.error(e);
     }
   }
@@ -224,11 +226,11 @@ class ChatGrpcClient {
   void _startConversationAndChat(
       ChatMessage message, StreamController<ChatMessage> controller) {
     try {
-      print('Starting new conversation before sending chat message');
+      Logger.info('Starting new conversation before sending chat message');
 
       // First check if the controller is still open
       if (controller.isClosed) {
-        print('Skipping conversation start - controller already closed');
+        Logger.info('Skipping conversation start - controller already closed');
         return;
       }
 
@@ -248,19 +250,21 @@ class ChatGrpcClient {
 
       startConversation(clientId: clientId).then((response) {
         if (controller.isClosed) {
-          print('Skipping conversation handling - controller already closed');
+          Logger.info(
+              'Skipping conversation handling - controller already closed');
           return;
         }
 
         if (response.conversationId.isEmpty) {
-          print('Warning: Server returned empty conversation ID');
+          Logger.info('Warning: Server returned empty conversation ID');
           // Generate a client-side ID if server doesn't provide one
           _currentConversationId = 'client-gen-${_uuid.v4()}';
         } else {
           _currentConversationId = response.conversationId;
         }
 
-        print('Started new conversation with ID: $_currentConversationId');
+        Logger.info(
+            'Started new conversation with ID: $_currentConversationId');
 
         // Create a success message for the UI
         final successMessage = ChatMessage()
@@ -286,20 +290,20 @@ class ChatGrpcClient {
           if (!controller.isClosed) {
             _sendChatMessage(updatedMessage, controller);
           } else {
-            print('Skipping message send - controller already closed');
+            Logger.info('Skipping message send - controller already closed');
           }
         });
       }).catchError((error) {
-        print('Error starting conversation: $error');
+        Logger.info('Error starting conversation: $error');
 
         if (controller.isClosed) {
-          print('Skipping error handling - controller already closed');
+          Logger.info('Skipping error handling - controller already closed');
           return;
         }
 
         // If we failed to start a conversation, create a fallback client-side ID
         _currentConversationId = 'fallback-${_uuid.v4()}';
-        print('Using fallback conversation ID: $_currentConversationId');
+        Logger.info('Using fallback conversation ID: $_currentConversationId');
 
         // Create an error message for the UI
         final errorMessage = ChatMessage()
@@ -324,7 +328,7 @@ class ChatGrpcClient {
         }
       });
     } catch (e) {
-      print('Error in _startConversationAndChat: $e');
+      Logger.info('Error in _startConversationAndChat: $e');
       if (!controller.isClosed) {
         controller.addError(e);
         controller.close();
@@ -337,18 +341,20 @@ class ChatGrpcClient {
       ChatMessage message, StreamController<ChatMessage> controller) {
     // Check if controller is already closed before doing anything
     if (controller.isClosed) {
-      print('Skipping _sendChatMessage - controller is already closed');
+      Logger.info('Skipping _sendChatMessage - controller is already closed');
       return;
     }
 
     try {
       // Verify we have a non-empty conversation ID
       if (message.conversationId.isEmpty) {
-        print('Warning: Message has empty conversation ID, generating one');
+        Logger.info(
+            'Warning: Message has empty conversation ID, generating one');
         message.conversationId = 'generated-${_uuid.v4()}';
       }
 
-      print('Sending message to conversation ID: ${message.conversationId}');
+      Logger.info(
+          'Sending message to conversation ID: ${message.conversationId}');
 
       // Call the Chat method which returns a stream of ChatMessage
       final responseStream = _client!.chat(message);
@@ -356,14 +362,15 @@ class ChatGrpcClient {
       // Forward all responses to our controller
       responseStream.listen(
         (response) {
-          print(
+          Logger.info(
               'Received response: ${response.content.substring(0, response.content.length > 50 ? 50 : response.content.length)}...');
 
           // Check for conversation not found error messages in the response content
           if (response.content.contains("conversation not found") ||
               response.content.contains("conversation expired") ||
               response.content.contains("conversation does not exist")) {
-            print('Detected conversation not found error in response content');
+            Logger.info(
+                'Detected conversation not found error in response content');
 
             // Handle as a conversation not found error
             _currentConversationId = null;
@@ -394,15 +401,16 @@ class ChatGrpcClient {
 
                   controller.add(followUpMessage);
                 } else {
-                  print(
+                  Logger.info(
                       'Skipping follow-up message - controller already closed');
                 }
               }).catchError((e) {
-                print('Error during conversation recovery: $e');
+                Logger.info('Error during conversation recovery: $e');
                 // Don't try to use the controller if there's an error in recovery
               });
             } else {
-              print('Skipping error handling - controller already closed');
+              Logger.info(
+                  'Skipping error handling - controller already closed');
             }
 
             return;
@@ -412,18 +420,19 @@ class ChatGrpcClient {
           if (response.type == MessageType.ASSISTANT_RESPONSE &&
               response.conversationId.isNotEmpty) {
             _currentConversationId = response.conversationId;
-            print('Saved conversation ID: $_currentConversationId');
+            Logger.info('Saved conversation ID: $_currentConversationId');
           }
 
           controller.add(response);
         },
         onError: (error) {
-          print('Error from server: $error');
+          Logger.info('Error from server: $error');
 
           // Special handling for conversation not found
           if (error.toString().contains('Conversation') &&
               error.toString().contains('not found')) {
-            print('Conversation not found, restarting with new conversation');
+            Logger.info(
+                'Conversation not found, restarting with new conversation');
             // Clear the conversation ID
             _currentConversationId = null;
 
@@ -441,7 +450,7 @@ class ChatGrpcClient {
 
               // Try to start a new conversation and automatically retry sending the message
               handleConversationNotFound().then((_) {
-                print(
+                Logger.info(
                     'Automatically retrying message after conversation recovery');
 
                 // Only proceed if the controller is still open
@@ -459,20 +468,21 @@ class ChatGrpcClient {
                     if (!controller.isClosed) {
                       _sendChatMessage(updatedMessage, controller);
                     } else {
-                      print(
+                      Logger.info(
                           'Skipping retry after recovery - controller already closed');
                     }
                   });
                 } else {
-                  print(
+                  Logger.info(
                       'Skipping retry after recovery - controller already closed');
                 }
               }).catchError((e) {
-                print('Error during conversation recovery: $e');
+                Logger.info('Error during conversation recovery: $e');
                 // Don't try to use the controller if there's an error in recovery
               });
             } else {
-              print('Skipping error handling - controller already closed');
+              Logger.info(
+                  'Skipping error handling - controller already closed');
             }
 
             return;
@@ -481,12 +491,12 @@ class ChatGrpcClient {
           controller.addError(getUserFriendlyErrorMessage(error));
         },
         onDone: () {
-          print('Server stream complete');
+          Logger.info('Server stream complete');
           controller.close();
         },
       );
     } catch (e) {
-      print('Error calling Chat method: $e');
+      Logger.info('Error calling Chat method: $e');
       controller.addError(Exception('Error calling Chat method: $e'));
       controller.close();
     }
@@ -496,13 +506,13 @@ class ChatGrpcClient {
   Stream<ProgressUpdate> trackProgress(String requestId) {
     try {
       if (_client == null) {
-        print('gRPC client not initialized, returning error stream');
+        Logger.info('gRPC client not initialized, returning error stream');
         return Stream.error(
             Exception('gRPC client not initialized. Call init() first.'));
       }
 
       final request = ProgressRequest()..requestId = requestId;
-      print('Tracking progress for request: $requestId');
+      Logger.info('Tracking progress for request: $requestId');
 
       try {
         // Call the Progress method which returns a stream of ProgressUpdate
@@ -512,7 +522,7 @@ class ChatGrpcClient {
         return progressStream.transform(
           StreamTransformer.fromHandlers(
             handleError: (error, stackTrace, sink) {
-              print('Error in progress stream: $error');
+              Logger.info('Error in progress stream: $error');
               final userFriendlyError =
                   Exception(getUserFriendlyErrorMessage(error));
               sink.addError(userFriendlyError, stackTrace);
@@ -520,11 +530,11 @@ class ChatGrpcClient {
           ),
         );
       } catch (e) {
-        print('Error calling Progress method: $e');
+        Logger.info('Error calling Progress method: $e');
         return Stream.error(Exception('Error tracking progress: $e'));
       }
     } catch (e) {
-      print('Error creating progress stream: $e');
+      Logger.info('Error creating progress stream: $e');
       return Stream.error(e);
     }
   }
@@ -536,7 +546,7 @@ class ChatGrpcClient {
   }) async {
     try {
       if (_client == null) {
-        print('gRPC client not initialized');
+        Logger.info('gRPC client not initialized');
         throw Exception('gRPC client not initialized. Call init() first.');
       }
 
@@ -553,31 +563,31 @@ class ChatGrpcClient {
         ..clientId = effectiveClientId
         ..conversationId = effectiveConversationId;
 
-      print(
+      Logger.info(
           'Starting conversation for client: $effectiveClientId with ID: $effectiveConversationId');
 
       try {
         final response = await _client!.startConversation(request);
 
         if (response.conversationId.isEmpty) {
-          print(
+          Logger.info(
               'Warning: Server returned empty conversation ID, using client-provided ID');
           _currentConversationId = effectiveConversationId;
         } else {
-          print(
+          Logger.info(
               'Successfully started conversation: ${response.conversationId}');
           _currentConversationId = response.conversationId;
         }
 
         return response;
       } catch (e) {
-        print('Error calling StartConversation method: $e');
+        Logger.info('Error calling StartConversation method: $e');
 
         // If there's a specific error about conversation not found
         if (e.toString().contains('Conversation') &&
             e.toString().contains('not found')) {
           // Clear the conversation ID and retry with a new one
-          print(
+          Logger.info(
               'Conversation not found, clearing ID and will create a new one');
           _currentConversationId = null;
 
@@ -590,7 +600,7 @@ class ChatGrpcClient {
         throw Exception('Error starting conversation: $e');
       }
     } catch (e) {
-      print('Error starting conversation: $e');
+      Logger.info('Error starting conversation: $e');
       rethrow;
     }
   }
@@ -598,7 +608,7 @@ class ChatGrpcClient {
   // Reset the current conversation
   void resetConversation() {
     _currentConversationId = null;
-    print(
+    Logger.info(
         'Conversation reset. A new conversation will be started on the next message.');
   }
 
@@ -612,7 +622,7 @@ class ChatGrpcClient {
   // Set the conversation ID manually if needed
   set conversationId(String? id) {
     _currentConversationId = id;
-    print('Conversation ID manually set to: $id');
+    Logger.info('Conversation ID manually set to: $id');
   }
 
   // Check if the client is already initialized
@@ -636,11 +646,11 @@ class ChatGrpcClient {
       {Duration timeout = const Duration(seconds: 5)}) async {
     try {
       if (_client == null) {
-        print('gRPC client not initialized, cannot test connection');
+        Logger.info('gRPC client not initialized, cannot test connection');
         return false;
       }
 
-      print('Testing gRPC connection...');
+      Logger.info('Testing gRPC connection...');
 
       // First try to get the channel connection
       await _channel!.getConnection().timeout(
@@ -668,26 +678,27 @@ class ChatGrpcClient {
             },
           );
         } catch (e) {
-          print('API test failed, but connection might still be good: $e');
+          Logger.info(
+              'API test failed, but connection might still be good: $e');
           // Even if this fails, we at least have a channel connection
         }
       }
 
-      print('gRPC connection test successful!');
+      Logger.info('gRPC connection test successful!');
       return true;
     } catch (e) {
-      print('gRPC connection test failed: $e');
+      Logger.info('gRPC connection test failed: $e');
       return false;
     }
   }
 
   // Handle conversation not found error by resetting and starting a new one
   Future<void> handleConversationNotFound() async {
-    print('Handling conversation not found error');
+    Logger.info('Handling conversation not found error');
 
     // Check if we can attempt recovery
     if (!_canAttemptRecovery()) {
-      print('Too many recovery attempts, giving up');
+      Logger.info('Too many recovery attempts, giving up');
       return;
     }
 
@@ -700,22 +711,23 @@ class ChatGrpcClient {
           await startConversation(clientId: 'recovery-${_uuid.v4()}');
 
       if (response.conversationId.isEmpty) {
-        print('Warning: Server returned empty conversation ID during recovery');
+        Logger.info(
+            'Warning: Server returned empty conversation ID during recovery');
         // Generate a client-side ID if server doesn't provide one
         _currentConversationId = 'client-recovery-${_uuid.v4()}';
       } else {
         _currentConversationId = response.conversationId;
       }
 
-      print(
+      Logger.info(
           'Successfully recovered with new conversation: $_currentConversationId');
       return;
     } catch (e) {
-      print('Failed to recover from conversation not found: $e');
+      Logger.info('Failed to recover from conversation not found: $e');
 
       // Create a fallback client-side ID even if recovery fails
       _currentConversationId = 'fallback-recovery-${_uuid.v4()}';
-      print(
+      Logger.info(
           'Using fallback conversation ID after recovery failure: $_currentConversationId');
       return;
     }
@@ -724,20 +736,21 @@ class ChatGrpcClient {
   // Ensure we have a valid conversation ID, creating one if needed
   Future<String> ensureConversationId() async {
     if (_currentConversationId != null && _currentConversationId!.isNotEmpty) {
-      print('Using existing conversation ID: $_currentConversationId');
+      Logger.info('Using existing conversation ID: $_currentConversationId');
       return _currentConversationId!;
     }
 
-    print('No conversation ID available, starting a new conversation');
+    Logger.info('No conversation ID available, starting a new conversation');
     try {
       final response = await startConversation();
-      print('Started new conversation with ID: ${response.conversationId}');
+      Logger.info(
+          'Started new conversation with ID: ${response.conversationId}');
       return response.conversationId;
     } catch (e) {
-      print('Failed to start new conversation: $e');
+      Logger.info('Failed to start new conversation: $e');
       // Generate a fallback ID
       final fallbackId = 'fallback-${_uuid.v4()}';
-      print('Using fallback conversation ID: $fallbackId');
+      Logger.info('Using fallback conversation ID: $fallbackId');
       _currentConversationId = fallbackId;
       return fallbackId;
     }
@@ -832,7 +845,7 @@ class ChatGrpcClient {
   // Reset recovery counter after successful message
   void _resetRecoveryCounter() {
     if (_recoveryAttempts > 0) {
-      print('Resetting recovery counter from $_recoveryAttempts to 0');
+      Logger.info('Resetting recovery counter from $_recoveryAttempts to 0');
       _recoveryAttempts = 0;
     }
   }
@@ -841,10 +854,10 @@ class ChatGrpcClient {
   bool _canAttemptRecovery() {
     _recoveryAttempts++;
     if (_recoveryAttempts > _maxRecoveryAttempts) {
-      print('Exceeded maximum recovery attempts ($_maxRecoveryAttempts)');
+      Logger.info('Exceeded maximum recovery attempts ($_maxRecoveryAttempts)');
       return false;
     }
-    print('Recovery attempt $_recoveryAttempts of $_maxRecoveryAttempts');
+    Logger.info('Recovery attempt $_recoveryAttempts of $_maxRecoveryAttempts');
     return true;
   }
 }
