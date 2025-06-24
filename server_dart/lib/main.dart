@@ -11,6 +11,7 @@ import 'generated/chat_service.pbgrpc.dart';
 class ChatServiceImpl extends ChatServiceBase {
   final Logger _logger = Logger('ChatServiceImpl');
   final Map<String, String> _conversations = {};
+  final Map<String, String> _systemPrompts = {}; // Store system prompts by conversation ID
   final Uuid _uuid = const Uuid();
 
   @override
@@ -34,9 +35,17 @@ class ChatServiceImpl extends ChatServiceBase {
     // Store the conversation
     _conversations[conversationId] = request.content;
 
+    // Check if there's a system prompt for this conversation
+    final systemPrompt = _systemPrompts[conversationId];
+    String responsePrefix = 'Echo:';
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      responsePrefix = 'Echo (with custom system prompt):';
+      _logger.info('Using system prompt for conversation $conversationId');
+    }
+
     // Simulate streaming response by sending the message word by word
     final words = [
-      'Echo:',
+      responsePrefix,
       request.content,
       '(streaming',
       'response',
@@ -120,6 +129,12 @@ class ChatServiceImpl extends ChatServiceBase {
 
     // Store the conversation
     _conversations[conversationId] = '';
+
+    // Store system prompt if provided
+    if (request.hasSystemPrompt() && request.systemPrompt.isNotEmpty) {
+      _systemPrompts[conversationId] = request.systemPrompt;
+      _logger.info('Stored system prompt for conversation $conversationId: ${request.systemPrompt.length > 50 ? '${request.systemPrompt.substring(0, 50)}...' : request.systemPrompt}');
+    }
 
     final response = StartConversationResponse()
       ..conversationId = conversationId;
