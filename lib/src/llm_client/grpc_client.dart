@@ -49,8 +49,12 @@ class GrpcClient implements ChatClient {
   }
 
   @override
-  Stream<String> chat(
-      {required List<app.Message> messages, String? model}) async* {
+  Stream<String> chat({
+    required List<app.Message> messages, 
+    String? model,
+    double? temperature,
+    double? topP,
+  }) async* {
     try {
       // Convert app messages to proto messages
       final protoMessages = messages
@@ -64,9 +68,14 @@ class GrpcClient implements ChatClient {
       final request = ChatRequest()
         ..model = model ?? defaultModel
         ..messages.addAll(protoMessages)
-        ..temperature = 0.7
+        ..temperature = temperature ?? 0.7
         ..maxTokens = 1000
         ..userId = 'flutter-client';
+
+      // Add top_p if provided
+      if (topP != null) {
+        request.topP = topP;
+      }
 
       try {
         // Make the streaming request

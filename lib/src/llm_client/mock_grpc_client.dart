@@ -5,8 +5,12 @@ import 'chat_client.dart';
 /// Used for testing when the actual server is not available
 class MockGrpcClient implements ChatClient {
   @override
-  Stream<String> chat(
-      {required List<app.Message> messages, String? model}) async* {
+  Stream<String> chat({
+    required List<app.Message> messages, 
+    String? model,
+    double? temperature,
+    double? topP,
+  }) async* {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));
 
@@ -17,6 +21,14 @@ class MockGrpcClient implements ChatClient {
     yield 'Hello from MockGrpcClient! ';
     if (model != null) {
       yield 'Using model: $model. ';
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (temperature != null) {
+      yield 'Temperature: ${temperature.toStringAsFixed(1)}. ';
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (topP != null) {
+      yield 'Top-p: ${topP.toStringAsFixed(1)}. ';
       await Future.delayed(const Duration(milliseconds: 100));
     }
     await Future.delayed(const Duration(milliseconds: 100));

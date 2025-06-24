@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/dependencies.dart';
 import 'debug/debug_settings.dart';
 import 'settings/model_picker.dart';
+import 'settings/llm_parameters.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -83,11 +84,15 @@ class HomePage extends ConsumerWidget {
             ),
           ),
           const ModelPicker(),
+          const LlmParameterCompact(),
           const DebugSettingsButton(),
         ],
       ),
       body: Column(
         children: [
+          // LLM Parameters section
+          const LlmParameterSettings(),
+          // Chat messages
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
