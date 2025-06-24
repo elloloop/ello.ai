@@ -11,6 +11,7 @@ import '../llm_client/grpc_client.dart';
 import '../llm_client/mock_grpc_client.dart';
 import '../llm_client/grpc_chat_client.dart';
 import '../models/message.dart';
+import '../models/conversation.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
 import '../utils/logger.dart';
@@ -63,6 +64,69 @@ class ChatHistoryNotifier extends StateNotifier<List<Message>> {
 
   void clear() {
     state = [];
+  }
+
+  void setMessages(List<Message> messages) {
+    state = messages;
+  }
+}
+
+/// Conversation list notifier
+class ConversationListNotifier extends StateNotifier<List<Conversation>> {
+  ConversationListNotifier() : super([]);
+
+  void addConversation(Conversation conversation) {
+    state = [conversation, ...state];
+  }
+
+  void updateConversation(String id, Conversation updatedConversation) {
+    state = state.map((conv) => conv.id == id ? updatedConversation : conv).toList();
+  }
+
+  void deleteConversation(String id) {
+    state = state.where((conv) => conv.id != id).toList();
+  }
+
+  void renameConversation(String id, String newTitle) {
+    state = state.map((conv) => 
+      conv.id == id ? conv.copyWith(title: newTitle) : conv
+    ).toList();
+  }
+
+  void addMessageToConversation(String conversationId, Message message) {
+    state = state.map((conv) {
+      if (conv.id == conversationId) {
+        final updatedMessages = [...conv.messages, message];
+        return conv.copyWith(messages: updatedMessages);
+      }
+      return conv;
+    }).toList();
+  }
+
+  void appendToLastMessageInConversation(String conversationId, String content) {
+    state = state.map((conv) {
+      if (conv.id == conversationId) {
+        if (conv.messages.isEmpty) {
+          final updatedMessages = [Message.assistant(content)];
+          return conv.copyWith(messages: updatedMessages);
+        }
+        final lastMessage = conv.messages.last;
+        final updatedMessages = [
+          ...conv.messages.sublist(0, conv.messages.length - 1),
+          lastMessage.appendContent(content)
+        ];
+        return conv.copyWith(messages: updatedMessages);
+      }
+      return conv;
+    }).toList();
+  }
+
+  Conversation? getConversationById(String id) {
+    try {
+      return state.firstWhere((conv) => conv.id == id);
+    } catch (e) {
+      return null;
+    }
   }
 }
 
@@ -516,6 +580,175 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
   }
 }
 
+/// Conversation controller for managing conversation-based chat operations
+class ConversationController extends StateNotifier<AsyncValue<void>> {
+  ConversationController(this.ref) : super(const AsyncData(null));
+
+  final Ref ref;
+
+  /// Create a new conversation
+  String createNewConversation({String? title}) {
+    final selectedModel = ref.read(modelProvider);
+    final conversation = Conversation.create(
+      title: title,
+      model: selectedModel,
+    );
+    
+    ref.read(conversationListProvider.notifier).addConversation(conversation);
+    ref.read(activeConversationIdProvider.notifier).state = conversation.id;
+    
+    // Clear current chat history and load the new conversation's messages
+    ref.read(chatHistoryProvider.notifier).setMessages(conversation.messages);
+    
+    return conversation.id;
+  }
+
+  /// Switch to an existing conversation
+  void switchToConversation(String conversationId) {
+    final conversation = ref.read(conversationListProvider.notifier).getConversationById(conversationId);
+    if (conversation != null) {
+      ref.read(activeConversationIdProvider.notifier).state = conversationId;
+      ref.read(chatHistoryProvider.notifier).setMessages(conversation.messages);
+    }
+  }
+
+  /// Delete a conversation
+  void deleteConversation(String conversationId) {
+    ref.read(conversationListProvider.notifier).deleteConversation(conversationId);
+    
+    // If this was the active conversation, create a new one
+    final activeId = ref.read(activeConversationIdProvider);
+    if (activeId == conversationId) {
+      createNewConversation();
+    }
+  }
+
+  /// Rename a conversation
+  void renameConversation(String conversationId, String newTitle) {
+    ref.read(conversationListProvider.notifier).renameConversation(conversationId, newTitle);
+  }
+
+  /// Send a message in the current conversation
+  Future<void> sendMessageInConversation(String content) async {
+    final activeConversationId = ref.read(activeConversationIdProvider);
+    if (activeConversationId == null) {
+      // Create a new conversation if none is active
+      createNewConversation();
+      return sendMessageInConversation(content);
+    }
+
+    if (content.isEmpty) return;
+
+    // Add user message to both chat history and conversation
+    final userMessage = Message.user(content);
+    ref.read(chatHistoryProvider.notifier).addUserMessage(content);
+    ref.read(conversationListProvider.notifier).addMessageToConversation(activeConversationId, userMessage);
+
+    state = const AsyncLoading();
+    final client = ref.read(currentChatClientProvider);
+    final selectedModel = ref.read(modelProvider);
+    final messages = ref.read(chatHistoryProvider);
+
+    // Check if we're using mock client - reset counter if so
+    final isMock = client.toString().contains('Mock');
+    if (isMock) {
+      ref.read(connectionFailCounterProvider.notifier).state = 0;
+    }
+
+    // Update connection status
+    Future.microtask(() {
+      if (!isMock) {
+        ref.read(connectionStatusProvider.notifier).setConnecting();
+      }
+    });
+
+    try {
+      // If we're using the gRPC client, check for conversation ID
+      if (client is GrpcChatClient) {
+        final grpcClient = ref.read(chatGrpcClientProvider);
+
+        // Check if we have an active conversation
+        if (!grpcClient.hasActiveConversation) {
+          Logger.info('No active conversation detected, attempting to start one');
+          try {
+            final clientId = 'client-${DateTime.now().millisecondsSinceEpoch}';
+            final response = await grpcClient.startConversation(clientId: clientId);
+            ref.read(conversationIdProvider.notifier).setConversationId(response.conversationId);
+            Logger.info('Successfully started new conversation before sending message');
+
+            final assistantMessage = Message.assistant('Started a new conversation session.');
+            ref.read(chatHistoryProvider.notifier).addAssistantMessage(assistantMessage.content);
+            ref.read(conversationListProvider.notifier).addMessageToConversation(activeConversationId, assistantMessage);
+          } catch (e) {
+            Logger.error('Error starting conversation: $e');
+            state = AsyncError(e, StackTrace.current);
+            return;
+          }
+        }
+      }
+
+      // Send the message via streaming
+      await for (final chunk in client.sendMessageStream(
+        content: content,
+        selectedModel: selectedModel,
+        messages: messages,
+      )) {
+        ref.read(chatHistoryProvider.notifier).appendToLastMessage(chunk);
+        ref.read(conversationListProvider.notifier).appendToLastMessageInConversation(activeConversationId, chunk);
+      }
+
+      // Update connection status based on the client type
+      if (!isMock) {
+        ref.read(connectionStatusProvider.notifier).setConnected();
+      }
+
+      state = const AsyncData(null);
+    } catch (e) {
+      Logger.error('Error sending message: $e');
+
+      // Handle conversation not found error
+      if (e.toString().contains('CONVERSATION_NOT_FOUND')) {
+        Logger.info('Detected conversation not found error, clearing conversation ID');
+        ref.read(conversationIdProvider.notifier).clearConversationId();
+
+        if (client is GrpcChatClient) {
+          final grpcClient = ref.read(chatGrpcClientProvider);
+          grpcClient.resetConversation();
+
+          try {
+            final clientId = 'recovery-${DateTime.now().millisecondsSinceEpoch}';
+            await grpcClient.startConversation(clientId: clientId);
+          } catch (startError) {
+            Logger.error('Failed to restart conversation: $startError');
+          }
+        }
+
+        final assistantMessage = Message.assistant('Previous conversation was not found or expired. Starting a new conversation.');
+        ref.read(chatHistoryProvider.notifier).addAssistantMessage(assistantMessage.content);
+        ref.read(conversationListProvider.notifier).addMessageToConversation(activeConversationId, assistantMessage);
+
+        state = const AsyncData(null);
+        return;
+      }
+
+      // Add error message to chat for other types of errors
+      if (messages.isEmpty || messages.last.isUser) {
+        final errorMessage = Message.assistant('Error: ${e.toString()}');
+        ref.read(chatHistoryProvider.notifier).addAssistantMessage(errorMessage.content);
+        ref.read(conversationListProvider.notifier).addMessageToConversation(activeConversationId, errorMessage);
+      }
+
+      if (!isMock) {
+        final currentCount = ref.read(connectionFailCounterProvider);
+        ref.read(connectionFailCounterProvider.notifier).state = currentCount + 1;
+        ref.read(connectionStatusProvider.notifier).setFailed();
+      }
+
+      state = AsyncError(e, StackTrace.current);
+    }
+  }
+}
+
 /// Conversation ID notifier
 class ConversationIdNotifier extends StateNotifier<String?> {
   ConversationIdNotifier() : super(null);
@@ -599,9 +832,35 @@ final chatHistoryProvider =
     StateNotifierProvider<ChatHistoryNotifier, List<Message>>(
         (ref) => ChatHistoryNotifier());
 
+/// Conversation list provider
+final conversationListProvider =
+    StateNotifierProvider<ConversationListNotifier, List<Conversation>>(
+        (ref) => ConversationListNotifier());
+
+/// Active conversation ID provider
+final activeConversationIdProvider = StateProvider<String?>((ref) => null);
+
+/// Active conversation provider (computed from ID and conversation list)
+final activeConversationProvider = Provider<Conversation?>((ref) {
+  final activeId = ref.watch(activeConversationIdProvider);
+  final conversations = ref.watch(conversationListProvider);
+  
+  if (activeId == null) return null;
+  
+  try {
+    return conversations.firstWhere((conv) => conv.id == activeId);
+  } catch (e) {
+    return null;
+  }
+});
+
 /// Chat controller provider
 final chatProvider = StateNotifierProvider<ChatController, AsyncValue<void>>(
     (ref) => ChatController(ref));
+
+/// Conversation controller provider
+final conversationProvider = StateNotifierProvider<ConversationController, AsyncValue<void>>(
+    (ref) => ConversationController(ref));
 
 /// gRPC client provider
 final chatGrpcClientProvider = Provider<ChatGrpcClient>((ref) {

@@ -30,7 +30,9 @@ void main() {
         grpcSecureProvider
             .overrideWith((ref) => GrpcSecureNotifier()..setSecure(false)),
         initConnectionStatusProvider.overrideWith((ref) {}),
-        // Add more overrides as needed for other providers
+        conversationListProvider.overrideWith((ref) => ConversationListNotifier()),
+        activeConversationIdProvider.overrideWith((ref) => null),
+        conversationProvider.overrideWith((ref) => ConversationController(ref)),
       ]);
     }
 
@@ -77,11 +79,18 @@ void main() {
       expect(iconButtons, findsAtLeastNWidgets(2));
     });
 
+    testWidgets('App has conversation list sidebar', (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      expect(find.text('New Chat'), findsOneWidget);
+      expect(find.text('No conversations yet.\nStart a new chat!'), findsOneWidget);
+    });
+
     testWidgets('Chat messages list view is present',
         (WidgetTester tester) async {
       final container = makeMockedContainer();
       await pumpApp(tester, container);
-      expect(find.byType(ListView), findsOneWidget);
+      expect(find.byType(ListView), findsWidgets);
     });
   });
 }
