@@ -1,6 +1,6 @@
 module ello.ai/server
 
-go 1.21
+go 1.22
 
 require (
 	google.golang.org/grpc v1.59.0

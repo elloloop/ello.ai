@@ -108,10 +108,10 @@ class DebugSettingsDialog extends ConsumerWidget {
 
             // Cloud Run information
             if (isCloudRun)
-              ListTile(
-                leading: const Icon(Icons.cloud),
-                title: const Text('Cloud Run Service Detected'),
-                subtitle: const Text('Using secure TLS connection (port 443)'),
+              const ListTile(
+                leading: Icon(Icons.cloud),
+                title: Text('Cloud Run Service Detected'),
+                subtitle: Text('Using secure TLS connection (port 443)'),
               ),
 
             const Divider(),
