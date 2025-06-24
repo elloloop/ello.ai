@@ -20,6 +20,8 @@ void main() {
             .overrideWith((ref) => ConnectionStatusNotifier()..setConnected()),
         useMockGrpcProvider.overrideWith((ref) => MockGrpcNotifier()..toggle()),
         modelProvider.overrideWith((ref) => ModelNotifier()),
+        temperatureProvider.overrideWith((ref) => TemperatureNotifier()),
+        topPProvider.overrideWith((ref) => TopPNotifier()),
         availableModelsProvider
             .overrideWith((ref) => ['gpt-3.5-turbo', 'gpt-4o']),
         isDebugModeProvider.overrideWith((ref) => true),
@@ -75,6 +77,18 @@ void main() {
       expect(find.byType(IconButton), findsWidgets);
       final iconButtons = find.byType(IconButton);
       expect(iconButtons, findsAtLeastNWidgets(2));
+    });
+
+    testWidgets('LLM Parameters UI is present', (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      
+      // Check for LLM parameters expansion tile
+      expect(find.text('LLM Parameters'), findsOneWidget);
+      expect(find.byType(ExpansionTile), findsOneWidget);
+      
+      // Check for compact parameter control in app bar
+      expect(find.byIcon(Icons.tune), findsAtLeastNWidgets(1));
     });
 
     testWidgets('Chat messages list view is present',
