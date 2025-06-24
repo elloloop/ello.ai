@@ -58,63 +58,11 @@ jobs:
           name: flutter-coverage
         continue-on-error: true
 
-  go-checks:
-    name: Go Lint & Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    defaults:
-      run:
-        working-directory: ./server
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22.4"
-          cache-dependency-path: server/go.sum
-
-      - name: Get Go dependencies
-        run: go mod download
-
-      - name: Verify Go dependencies
-        run: go mod verify
-
-      - name: Check Go formatting
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files need formatting:"
-            gofmt -s -l .
-            exit 1
-          fi
-
-      - name: Run Go vet
-        run: go vet ./...
-
-      - name: Run Go staticcheck
-        uses: dominikh/staticcheck-action@v1.3.1
-        with:
-          version: "2024.1.1"
-          working-directory: server
-
-      - name: Run Go tests
-        run: |
-          # Run tests if any *_test.go files exist
-          if ls *_test.go 1> /dev/null 2>&1; then
-            go test -v -race -coverprofile=coverage.out ./...
-            go tool cover -html=coverage.out -o coverage.html
-          else
-            echo "No Go test files found, skipping tests"
-          fi
-
   build-check:
     name: Build Verification
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [flutter-checks, go-checks]
+    needs: [flutter-checks]
 
     steps:
       - name: Checkout code
@@ -127,19 +75,8 @@ jobs:
           channel: "stable"
           cache: true
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.22.4"
-          cache-dependency-path: server/go.sum
-
       - name: Get Flutter dependencies
         run: flutter pub get
-
-      - name: Get Go dependencies
-        run: |
-          cd server
-          go mod download
 
       - name: Generate protobuf files
         run: |
@@ -150,11 +87,6 @@ jobs:
 
       - name: Build Flutter app (Android APK)
         run: flutter build apk --debug --no-pub
-
-      - name: Build Go server
-        run: |
-          cd server
-          go build -v .
 
   security-scan:
     name: Security Scan
@@ -183,17 +115,16 @@ jobs:
   summary:
     name: PR Status Summary
     runs-on: ubuntu-latest
-    needs: [flutter-checks, go-checks, build-check]
+    needs: [flutter-checks, build-check]
     if: always()
 
     steps:
       - name: Check all job results
         run: |
           echo "Flutter checks: ${{ needs.flutter-checks.result }}"
-          echo "Go checks: ${{ needs.go-checks.result }}"
           echo "Build check: ${{ needs.build-check.result }}"
 
-          if [[ "${{ needs.flutter-checks.result }}" != "success" || "${{ needs.go-checks.result }}" != "success" || "${{ needs.build-check.result }}" != "success" ]]; then
+          if [[ "${{ needs.flutter-checks.result }}" != "success" || "${{ needs.build-check.result }}" != "success" ]]; then
             echo "❌ One or more checks failed. PR cannot be merged."
             exit 1
           else

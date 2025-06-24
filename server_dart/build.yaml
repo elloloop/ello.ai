@@ -1,0 +1,9 @@
+targets:
+  $default:
+    builders:
+      protobuf:protobuf:
+        options:
+          # Generate gRPC code
+          generate_grpc: true
+        generate_for:
+          - protos/**.proto
