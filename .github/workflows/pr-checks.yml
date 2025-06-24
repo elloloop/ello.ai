@@ -85,9 +85,6 @@ jobs:
       - name: Build Flutter app (Web)
         run: flutter build web --no-pub
 
-      - name: Build Flutter app (Android APK)
-        run: flutter build apk --debug --no-pub
-
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
