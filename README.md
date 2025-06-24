@@ -201,16 +201,42 @@ The server listens on port 50051 by default and provides an echo service for tes
 ## Contributing
 
 1. Fork and create a feature branch
-2. Write unit and widget tests
+2. Write unit and widget tests (80% coverage required)
 3. Run `dart format` and `flutter analyze`
-4. Open a pull request against `main`
+4. Execute test suite: `./scripts/run_tests.sh`
+5. Open a pull request against `main`
+
+### Testing
+
+This project maintains comprehensive test coverage with:
+
+- **Unit Tests**: Business logic and state management
+- **Widget Tests**: UI components and interactions  
+- **Integration Tests**: End-to-end user workflows
+- **80% Coverage Gate**: Enforced in CI pipeline
+
+```bash
+# Run all tests with coverage
+flutter test --coverage
+
+# Use test runner script
+./scripts/run_tests.sh
+
+# Run specific test categories
+flutter test test/unit/
+flutter test test/widget/
+flutter test integration_test/
+```
+
+See [docs/TESTING.md](docs/TESTING.md) for detailed testing documentation.
 
 ### CI/CD Pipeline
 
 This project uses GitHub Actions for continuous integration. Every pull request triggers:
 
 - **Flutter Checks**: Linting, formatting, and tests
-- **Go Server Checks**: Formatting, vetting, and tests
+- **Coverage Enforcement**: 80% threshold requirement
+- **Go Server Checks**: Formatting, vetting, and tests  
 - **Build Verification**: Ensures all platforms compile
 - **Security Scanning**: Vulnerability detection
 
