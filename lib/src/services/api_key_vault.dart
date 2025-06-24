@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/logger.dart';
+import 'notification_service.dart';
 
 /// Service for securely storing and retrieving API keys
 /// Uses platform-specific secure storage with AES-256 fallback
@@ -310,6 +311,8 @@ class ApiKeyVault {
         'WARNING: Using encrypted file storage for API keys. '
         'For better security, ensure your system has a working keyring/keychain.'
       );
+      // Show toast notification to user
+      NotificationService.showFallbackStorageWarning();
     }
   }
 

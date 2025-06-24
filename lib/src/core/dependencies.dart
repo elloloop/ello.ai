@@ -14,6 +14,7 @@ import '../models/message.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
 import '../services/api_key_vault.dart';
+import '../services/notification_service.dart';
 import '../utils/logger.dart';
 
 /// ============================================================================
@@ -583,13 +584,51 @@ final useDirectApiProvider = StateNotifierProvider<DirectApiNotifier, bool>(
 
 /// API Key Vault provider
 final apiKeyVaultProvider = FutureProvider<ApiKeyVault>((ref) async {
-  return await ApiKeyVault.create();
+  final vault = await ApiKeyVault.create();
+  
+  // Perform one-time migration from environment variables
+  await _migrateEnvironmentApiKey(vault);
+  
+  return vault;
 });
+
+/// Migrate API key from environment variable to secure storage (one-time)
+Future<void> _migrateEnvironmentApiKey(ApiKeyVault vault) async {
+  try {
+    // Check if we already have a key in secure storage
+    final existingKey = await vault.getOpenAIKey();
+    if (existingKey != null && existingKey.isNotEmpty) {
+      Logger.info('API key already exists in secure storage, skipping migration');
+      return;
+    }
+    
+    // Check if there's a key in environment variables
+    const envKey = String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
+    if (envKey.isNotEmpty) {
+      Logger.info('Migrating API key from environment variable to secure storage');
+      await vault.storeOpenAIKey(envKey);
+      Logger.info('Migration completed successfully');
+      
+      // Show notification about successful migration
+      NotificationService.showInfo(
+        'API key migrated to secure storage for better security'
+      );
+    }
+  } catch (e) {
+    Logger.error('Failed to migrate API key from environment: $e');
+  }
+}
 
 /// OpenAI API Key provider
 final openaiApiKeyProvider = FutureProvider<String?>((ref) async {
   final vault = await ref.watch(apiKeyVaultProvider.future);
   return await vault.getOpenAIKey();
+});
+
+/// Provider to check if OpenAI API key exists
+final hasOpenaiApiKeyProvider = FutureProvider<bool>((ref) async {
+  final key = await ref.watch(openaiApiKeyProvider.future);
+  return key != null && key.isNotEmpty;
 });
 
 /// gRPC Web mode provider
