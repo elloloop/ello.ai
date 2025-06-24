@@ -22,6 +22,7 @@ class ChatRequest extends $pb.GeneratedMessage {
     $core.double? temperature,
     $core.int? maxTokens,
     $core.String? userId,
+    $core.double? topP,
   }) {
     final $result = create();
     if (model != null) {
@@ -38,6 +39,9 @@ class ChatRequest extends $pb.GeneratedMessage {
     }
     if (userId != null) {
       $result.userId = userId;
+    }
+    if (topP != null) {
+      $result.topP = topP;
     }
     return $result;
   }
@@ -60,6 +64,7 @@ class ChatRequest extends $pb.GeneratedMessage {
         3, _omitFieldNames ? '' : 'temperature', $pb.PbFieldType.OF)
     ..a<$core.int>(4, _omitFieldNames ? '' : 'maxTokens', $pb.PbFieldType.O3)
     ..aOS(5, _omitFieldNames ? '' : 'userId')
+    ..a<$core.double>(6, _omitFieldNames ? '' : 'topP', $pb.PbFieldType.OF)
     ..hasRequiredFields = false;
 
   @$core.Deprecated('Using this can add significant overhead to your binary. '
@@ -134,6 +139,18 @@ class ChatRequest extends $pb.GeneratedMessage {
   $core.bool hasUserId() => $_has(4);
   @$pb.TagNumber(5)
   void clearUserId() => clearField(5);
+
+  @$pb.TagNumber(6)
+  $core.double get topP => $_getN(5);
+  @$pb.TagNumber(6)
+  set topP($core.double v) {
+    $_setFloat(5, v);
+  }
+
+  @$pb.TagNumber(6)
+  $core.bool hasTopP() => $_has(5);
+  @$pb.TagNumber(6)
+  void clearTopP() => clearField(6);
 }
 
 /// Single message in a conversation
@@ -399,14 +416,14 @@ class ChatCompletionResponse extends $pb.GeneratedMessage {
         subBuilder: Choice.create)
     ..a<$fixnum.Int64>(4, _omitFieldNames ? '' : 'created', $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
-    ..a<$fixnum.Int64>(
-        5, _omitFieldNames ? '' : 'usagePromptTokens', $pb.PbFieldType.OU6,
+    ..a<$fixnum.Int64>(5, _omitFieldNames ? '' : 'usagePromptTokens',
+        $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
-    ..a<$fixnum.Int64>(
-        6, _omitFieldNames ? '' : 'usageCompletionTokens', $pb.PbFieldType.OU6,
+    ..a<$fixnum.Int64>(6, _omitFieldNames ? '' : 'usageCompletionTokens',
+        $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
-    ..a<$fixnum.Int64>(
-        7, _omitFieldNames ? '' : 'usageTotalTokens', $pb.PbFieldType.OU6,
+    ..a<$fixnum.Int64>(7, _omitFieldNames ? '' : 'usageTotalTokens',
+        $pb.PbFieldType.OU6,
         defaultOrMaker: $fixnum.Int64.ZERO)
     ..hasRequiredFields = false;
 

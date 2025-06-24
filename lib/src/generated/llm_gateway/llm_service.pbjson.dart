@@ -29,6 +29,7 @@ const ChatRequest$json = {
     {'1': 'temperature', '3': 3, '4': 1, '5': 2, '10': 'temperature'},
     {'1': 'max_tokens', '3': 4, '4': 1, '5': 5, '10': 'maxTokens'},
     {'1': 'user_id', '3': 5, '4': 1, '5': 9, '10': 'userId'},
+    {'1': 'top_p', '3': 6, '4': 1, '5': 2, '10': 'topP'},
   ],
 };
 
@@ -37,7 +38,7 @@ final $typed_data.Uint8List chatRequestDescriptor = $convert.base64Decode(
     'CgtDaGF0UmVxdWVzdBIUCgVtb2RlbBgBIAEoCVIFbW9kZWwSMAoIbWVzc2FnZXMYAiADKAsyFC'
     '5sbG1fZ2F0ZXdheS5NZXNzYWdlUghtZXNzYWdlcxIgCgt0ZW1wZXJhdHVyZRgDIAEoAlILdGVt'
     'cGVyYXR1cmUSHQoKbWF4X3Rva2VucxgEIAEoBVIJbWF4VG9rZW5zEhcKB3VzZXJfaWQYBSABKA'
-    'lSBnVzZXJJZA==');
+    'lSBnVzZXJJZBITCgV0b3BfcBgGIAEoAlIEdG9wUA==');
 
 @$core.Deprecated('Use messageDescriptor instead')
 const Message$json = {
