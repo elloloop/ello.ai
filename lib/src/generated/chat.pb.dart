@@ -241,6 +241,7 @@ class StartConversationRequest extends $pb.GeneratedMessage {
   factory StartConversationRequest({
     $core.String? clientId,
     $core.String? conversationId,
+    $core.String? systemPrompt,
   }) {
     final $result = create();
     if (clientId != null) {
@@ -248,6 +249,9 @@ class StartConversationRequest extends $pb.GeneratedMessage {
     }
     if (conversationId != null) {
       $result.conversationId = conversationId;
+    }
+    if (systemPrompt != null) {
+      $result.systemPrompt = systemPrompt;
     }
     return $result;
   }
@@ -265,6 +269,7 @@ class StartConversationRequest extends $pb.GeneratedMessage {
       createEmptyInstance: create)
     ..aOS(1, _omitFieldNames ? '' : 'clientId')
     ..aOS(2, _omitFieldNames ? '' : 'conversationId')
+    ..aOS(3, _omitFieldNames ? '' : 'systemPrompt')
     ..hasRequiredFields = false;
 
   @$core.Deprecated('Using this can add significant overhead to your binary. '
@@ -315,6 +320,18 @@ class StartConversationRequest extends $pb.GeneratedMessage {
   $core.bool hasConversationId() => $_has(1);
   @$pb.TagNumber(2)
   void clearConversationId() => clearField(2);
+
+  @$pb.TagNumber(3)
+  $core.String get systemPrompt => $_getSZ(2);
+  @$pb.TagNumber(3)
+  set systemPrompt($core.String v) {
+    $_setString(2, v);
+  }
+
+  @$pb.TagNumber(3)
+  $core.bool hasSystemPrompt() => $_has(2);
+  @$pb.TagNumber(3)
+  void clearSystemPrompt() => clearField(3);
 }
 
 /// Response for starting a new conversation

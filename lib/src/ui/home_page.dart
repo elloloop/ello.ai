@@ -222,6 +222,90 @@ class HomePage extends ConsumerWidget {
               },
             ),
           ),
+          // System Prompt Section
+          Consumer(
+            builder: (context, ref, _) {
+              final systemPrompt = ref.watch(systemPromptProvider);
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                child: ExpansionTile(
+                  title: Row(
+                    children: [
+                      const Icon(Icons.psychology, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'System Prompt Override',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      if (systemPrompt.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Active',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Override the default system prompt for new conversations:',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                              hintText: 'Enter custom system prompt (optional)...',
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: (value) {
+                              ref.read(systemPromptProvider.notifier).setSystemPrompt(value);
+                            },
+                            controller: TextEditingController(text: systemPrompt)
+                              ..selection = TextSelection.fromPosition(
+                                TextPosition(offset: systemPrompt.length),
+                              ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  ref.read(systemPromptProvider.notifier).clearSystemPrompt();
+                                },
+                                child: const Text('Clear'),
+                              ),
+                              const Spacer(),
+                              Text(
+                                systemPrompt.isEmpty 
+                                  ? 'Using default system prompt' 
+                                  : '${systemPrompt.length} characters',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.all(8),
             child: Row(
