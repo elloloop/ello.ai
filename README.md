@@ -237,3 +237,4 @@ Branch protection is configured and enforced automatically via GitHub settings.
 ## License
 
 MIT. See `LICENSE` for the full text.
+# Test comment

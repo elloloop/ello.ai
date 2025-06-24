@@ -35,30 +35,40 @@ class ChatServiceClient extends $grpc.Client {
       '/chat.ChatService/Chat',
       ($0.ChatMessage value) => value.writeToBuffer(),
       ($core.List<$core.int> value) => $0.ChatMessage.fromBuffer(value));
-  static final _$progress = $grpc.ClientMethod<$0.ProgressRequest, $0.ProgressUpdate>(
-      '/chat.ChatService/Progress',
-      ($0.ProgressRequest value) => value.writeToBuffer(),
-      ($core.List<$core.int> value) => $0.ProgressUpdate.fromBuffer(value));
-  static final _$startConversation = $grpc.ClientMethod<$0.StartConversationRequest, $0.StartConversationResponse>(
+  static final _$progress =
+      $grpc.ClientMethod<$0.ProgressRequest, $0.ProgressUpdate>(
+          '/chat.ChatService/Progress',
+          ($0.ProgressRequest value) => value.writeToBuffer(),
+          ($core.List<$core.int> value) => $0.ProgressUpdate.fromBuffer(value));
+  static final _$startConversation = $grpc.ClientMethod<
+          $0.StartConversationRequest, $0.StartConversationResponse>(
       '/chat.ChatService/StartConversation',
       ($0.StartConversationRequest value) => value.writeToBuffer(),
-      ($core.List<$core.int> value) => $0.StartConversationResponse.fromBuffer(value));
+      ($core.List<$core.int> value) =>
+          $0.StartConversationResponse.fromBuffer(value));
 
   ChatServiceClient(super.channel, {super.options, super.interceptors});
 
   /// Chat method where client sends a single message and server streams responses
   /// Main chat stream for server-side streaming
-  $grpc.ResponseStream<$0.ChatMessage> chat($0.ChatMessage request, {$grpc.CallOptions? options}) {
-    return $createStreamingCall(_$chat, $async.Stream.fromIterable([request]), options: options);
+  $grpc.ResponseStream<$0.ChatMessage> chat($0.ChatMessage request,
+      {$grpc.CallOptions? options}) {
+    return $createStreamingCall(_$chat, $async.Stream.fromIterable([request]),
+        options: options);
   }
 
   /// Stream for sending progress updates
-  $grpc.ResponseStream<$0.ProgressUpdate> progress($0.ProgressRequest request, {$grpc.CallOptions? options}) {
-    return $createStreamingCall(_$progress, $async.Stream.fromIterable([request]), options: options);
+  $grpc.ResponseStream<$0.ProgressUpdate> progress($0.ProgressRequest request,
+      {$grpc.CallOptions? options}) {
+    return $createStreamingCall(
+        _$progress, $async.Stream.fromIterable([request]),
+        options: options);
   }
 
   /// Starts a new conversation
-  $grpc.ResponseFuture<$0.StartConversationResponse> startConversation($0.StartConversationRequest request, {$grpc.CallOptions? options}) {
+  $grpc.ResponseFuture<$0.StartConversationResponse> startConversation(
+      $0.StartConversationRequest request,
+      {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$startConversation, request, options: options);
   }
 }
@@ -82,28 +92,37 @@ abstract class ChatServiceBase extends $grpc.Service {
         true,
         ($core.List<$core.int> value) => $0.ProgressRequest.fromBuffer(value),
         ($0.ProgressUpdate value) => value.writeToBuffer()));
-    $addMethod($grpc.ServiceMethod<$0.StartConversationRequest, $0.StartConversationResponse>(
+    $addMethod($grpc.ServiceMethod<$0.StartConversationRequest,
+            $0.StartConversationResponse>(
         'StartConversation',
         startConversation_Pre,
         false,
         false,
-        ($core.List<$core.int> value) => $0.StartConversationRequest.fromBuffer(value),
+        ($core.List<$core.int> value) =>
+            $0.StartConversationRequest.fromBuffer(value),
         ($0.StartConversationResponse value) => value.writeToBuffer()));
   }
 
-  $async.Stream<$0.ChatMessage> chat_Pre($grpc.ServiceCall $call, $async.Future<$0.ChatMessage> $request) async* {
+  $async.Stream<$0.ChatMessage> chat_Pre(
+      $grpc.ServiceCall $call, $async.Future<$0.ChatMessage> $request) async* {
     yield* chat($call, await $request);
   }
 
-  $async.Stream<$0.ProgressUpdate> progress_Pre($grpc.ServiceCall $call, $async.Future<$0.ProgressRequest> $request) async* {
+  $async.Stream<$0.ProgressUpdate> progress_Pre($grpc.ServiceCall $call,
+      $async.Future<$0.ProgressRequest> $request) async* {
     yield* progress($call, await $request);
   }
 
-  $async.Future<$0.StartConversationResponse> startConversation_Pre($grpc.ServiceCall $call, $async.Future<$0.StartConversationRequest> $request) async {
+  $async.Future<$0.StartConversationResponse> startConversation_Pre(
+      $grpc.ServiceCall $call,
+      $async.Future<$0.StartConversationRequest> $request) async {
     return startConversation($call, await $request);
   }
 
-  $async.Stream<$0.ChatMessage> chat($grpc.ServiceCall call, $0.ChatMessage request);
-  $async.Stream<$0.ProgressUpdate> progress($grpc.ServiceCall call, $0.ProgressRequest request);
-  $async.Future<$0.StartConversationResponse> startConversation($grpc.ServiceCall call, $0.StartConversationRequest request);
+  $async.Stream<$0.ChatMessage> chat(
+      $grpc.ServiceCall call, $0.ChatMessage request);
+  $async.Stream<$0.ProgressUpdate> progress(
+      $grpc.ServiceCall call, $0.ProgressRequest request);
+  $async.Future<$0.StartConversationResponse> startConversation(
+      $grpc.ServiceCall call, $0.StartConversationRequest request);
 }

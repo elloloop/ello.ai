@@ -1,0 +1,36 @@
+{
+  "name": "ello.ai",
+  "version": "1.0.0",
+  "description": "> A sleek, modern AI chat assistant for every platform. Private, powerful, and model-flexible.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.dart": [
+      "dart format",
+      "flutter analyze --fatal-infos --fatal-warnings"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/elloloop/ello.ai.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/elloloop/ello.ai/issues"
+  },
+  "homepage": "https://github.com/elloloop/ello.ai#readme",
+  "devDependencies": {
+    "husky": "^9.0.11",
+    "lint-staged": "^15.2.2"
+  }
+}

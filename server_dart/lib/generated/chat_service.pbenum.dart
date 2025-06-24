@@ -16,23 +16,29 @@ import 'package:protobuf/protobuf.dart' as $pb;
 
 /// Message types
 class MessageType extends $pb.ProtobufEnum {
-  static const MessageType USER_QUERY = MessageType._(0, _omitEnumNames ? '' : 'USER_QUERY');
-  static const MessageType ASSISTANT_RESPONSE = MessageType._(1, _omitEnumNames ? '' : 'ASSISTANT_RESPONSE');
-  static const MessageType ACTION_REQUEST = MessageType._(2, _omitEnumNames ? '' : 'ACTION_REQUEST');
-  static const MessageType ACTION_RESPONSE = MessageType._(3, _omitEnumNames ? '' : 'ACTION_RESPONSE');
+  static const MessageType USER_QUERY =
+      MessageType._(0, _omitEnumNames ? '' : 'USER_QUERY');
+  static const MessageType ASSISTANT_RESPONSE =
+      MessageType._(1, _omitEnumNames ? '' : 'ASSISTANT_RESPONSE');
+  static const MessageType ACTION_REQUEST =
+      MessageType._(2, _omitEnumNames ? '' : 'ACTION_REQUEST');
+  static const MessageType ACTION_RESPONSE =
+      MessageType._(3, _omitEnumNames ? '' : 'ACTION_RESPONSE');
 
-  static const $core.List<MessageType> values = <MessageType> [
+  static const $core.List<MessageType> values = <MessageType>[
     USER_QUERY,
     ASSISTANT_RESPONSE,
     ACTION_REQUEST,
     ACTION_RESPONSE,
   ];
 
-  static final $core.List<MessageType?> _byValue = $pb.ProtobufEnum.$_initByValueList(values, 3);
-  static MessageType? valueOf($core.int value) =>  value < 0 || value >= _byValue.length ? null : _byValue[value];
+  static final $core.List<MessageType?> _byValue =
+      $pb.ProtobufEnum.$_initByValueList(values, 3);
+  static MessageType? valueOf($core.int value) =>
+      value < 0 || value >= _byValue.length ? null : _byValue[value];
 
   const MessageType._(super.value, super.name);
 }
 
-
-const $core.bool _omitEnumNames = $core.bool.fromEnvironment('protobuf.omit_enum_names');
+const $core.bool _omitEnumNames =
+    $core.bool.fromEnvironment('protobuf.omit_enum_names');
