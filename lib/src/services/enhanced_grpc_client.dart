@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:uuid/uuid.dart';
 import '../generated/chat.pbgrpc.dart';
+import 'package:grpc/grpc.dart';
+import '../models/message.dart';
+import '../utils/logger.dart';
 
 /// Enhanced gRPC chat client that follows the same pattern as the Python client
 /// This implementation focuses on robust conversation handling and streaming
@@ -21,7 +24,7 @@ class EnhancedGrpcChatClient {
   EnhancedGrpcChatClient(this._client) {
     // Generate a stable client ID
     _clientId = 'flutter-client-${_uuid.v4()}';
-    print('Initialized enhanced gRPC client with ID: $_clientId');
+    Logger.info('Initialized enhanced gRPC client with ID: $_clientId');
   }
 
   // Check if we're connected
@@ -50,7 +53,7 @@ class EnhancedGrpcChatClient {
 
         _isConnected = true;
       } catch (e) {
-        print('Connection test failed: $e');
+        Logger.error('Connection test failed: $e');
         _isConnected = false;
         _connectionStatusController.add(ConnectionStatus.disconnected);
         return false;
@@ -60,7 +63,7 @@ class EnhancedGrpcChatClient {
       final response = await startConversation();
 
       if (response.conversationId.isEmpty) {
-        print('Warning: Server returned empty conversation ID');
+        Logger.warning('Warning: Server returned empty conversation ID');
         _isConnected = false;
         _connectionStatusController.add(ConnectionStatus.error);
         return false;
@@ -71,7 +74,7 @@ class EnhancedGrpcChatClient {
       _connectionStatusController.add(ConnectionStatus.connected);
       return true;
     } catch (e) {
-      print('Connection error: $e');
+      Logger.error('Connection error: $e');
       _isConnected = false;
       _connectionStatusController.add(ConnectionStatus.error);
       return false;
@@ -88,7 +91,7 @@ class EnhancedGrpcChatClient {
       ..clientId = _clientId!
       ..conversationId = conversationId;
 
-    print('Starting conversation: $conversationId');
+    Logger.info('Starting conversation: $conversationId');
 
     try {
       // Call the service
@@ -98,11 +101,11 @@ class EnhancedGrpcChatClient {
 
       // Save the conversation ID
       _conversationId = response.conversationId;
-      print('Conversation started: ${response.conversationId}');
+      Logger.info('Conversation started: ${response.conversationId}');
 
       return response;
     } catch (e) {
-      print('Error starting conversation: $e');
+      Logger.error('Error starting conversation: $e');
       // Keep using our client-side ID if server fails
       _conversationId = conversationId;
 
@@ -114,13 +117,13 @@ class EnhancedGrpcChatClient {
   // Reset the conversation
   Future<void> resetConversation() async {
     _conversationId = null;
-    print('Conversation reset, will start a new one on next message');
+    Logger.info('Conversation reset, will start a new one on next message');
 
     // Start a new conversation right away
     try {
       await startConversation();
     } catch (e) {
-      print('Failed to start new conversation after reset: $e');
+      Logger.error('Failed to start new conversation after reset: $e');
       // We'll try again with the next message
     }
   }
@@ -139,7 +142,7 @@ class EnhancedGrpcChatClient {
             final response = await startConversation();
             _conversationId = response.conversationId;
           } catch (e) {
-            print('Failed to start conversation before chat: $e');
+            Logger.error('Failed to start conversation before chat: $e');
             controller.addError('Failed to start conversation: $e');
             controller.close();
             return;
@@ -153,7 +156,7 @@ class EnhancedGrpcChatClient {
           ..type = MessageType.USER_QUERY
           ..conversationId = _conversationId!;
 
-        print('Sending message to conversation: $_conversationId');
+        Logger.info('Sending message to conversation: $_conversationId');
 
         // Status update - thinking
         controller.add(ChatMessage()
@@ -171,7 +174,7 @@ class EnhancedGrpcChatClient {
             // Check for conversation errors in content
             if (response.content.contains('conversation not found') ||
                 response.content.contains('conversation expired')) {
-              print('Detected conversation error in response');
+              Logger.warning('Detected conversation error in response');
               _conversationId = null;
 
               // Create an error message
@@ -211,7 +214,7 @@ class EnhancedGrpcChatClient {
             controller.add(response);
           },
           onError: (error) {
-            print('Error in chat stream: $error');
+            Logger.error('Error in chat stream: $error');
 
             // Special handling for conversation not found
             if (error.toString().contains('conversation not found') ||
@@ -258,7 +261,7 @@ class EnhancedGrpcChatClient {
           },
         );
       } catch (e) {
-        print('Error sending chat message: $e');
+        Logger.error('Error sending chat message: $e');
         controller.addError(e);
         controller.close();
       }

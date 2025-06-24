@@ -13,6 +13,7 @@ import '../llm_client/grpc_chat_client.dart';
 import '../models/message.dart';
 import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
+import '../utils/logger.dart';
 
 /// ============================================================================
 /// CONFIGURATION MODELS
@@ -150,22 +151,22 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
     // If connecting to Cloud Run, always use secure connection
     final effectiveSecure = isCloudRun ? true : secure;
 
-    print('Creating initial chat client:');
-    print('- useDirectApi: $useDirectApi');
-    print('- useMockGrpc: $useMock');
-    print('- gRPC host: $host');
-    print('- gRPC port: $port');
-    print('- gRPC secure: $effectiveSecure');
-    print('- isCloudRun: $isCloudRun');
+    Logger.info('Creating initial chat client:');
+    Logger.info('- useDirectApi: $useDirectApi');
+    Logger.info('- useMockGrpc: $useMock');
+    Logger.info('- gRPC host: $host');
+    Logger.info('- gRPC port: $port');
+    Logger.info('- gRPC secure: $effectiveSecure');
+    Logger.info('- isCloudRun: $isCloudRun');
 
     if (useDirectApi) {
       // Use direct API connection (OpenAI)
-      final key =
-          const String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
+      const key =
+          String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
       return key.isEmpty ? MockClient() : OpenAIClient(key);
     } else if (useMock) {
       // Use mock client when explicitly requested
-      print('Using mock gRPC client as requested (useMock: true)');
+      Logger.info('Using mock gRPC client as requested (useMock: true)');
       return MockGrpcClient();
     } else {
       try {
@@ -180,16 +181,16 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
             port: port,
             secure: effectiveSecure,
           );
-          print('Successfully initialized gRPC client');
+          Logger.info('Successfully initialized gRPC client');
         } catch (e) {
-          print('Error re-initializing gRPC client: $e');
+          Logger.error('Error re-initializing gRPC client: $e');
           // Continue with the existing client
         }
 
         return GrpcChatClient(chatGrpcClient);
       } catch (e) {
         // Fallback to mock if connection fails during initialization
-        print('Error creating initial gRPC client: $e, falling back to mock');
+        Logger.error('Error creating initial gRPC client: $e, falling back to mock');
         return MockGrpcClient();
       }
     }
@@ -208,29 +209,29 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
     // If connecting to Cloud Run, always use secure connection
     final effectiveSecure = isCloudRun ? true : secure;
 
-    print('Updating chat client:');
-    print('- useDirectApi: $useDirectApi');
-    print('- useMockGrpc: $useMock');
-    print('- gRPC host: $host');
-    print('- gRPC port: $port');
-    print('- gRPC secure: $effectiveSecure');
-    print('- isCloudRun: $isCloudRun');
+    Logger.info('Updating chat client:');
+    Logger.info('- useDirectApi: $useDirectApi');
+    Logger.info('- useMockGrpc: $useMock');
+    Logger.info('- gRPC host: $host');
+    Logger.info('- gRPC port: $port');
+    Logger.info('- gRPC secure: $effectiveSecure');
+    Logger.info('- isCloudRun: $isCloudRun');
 
     // DO NOT update connection status during initialization
     // We'll use a separate function to update status after providers are initialized
 
     if (useDirectApi) {
       // Use direct API connection (OpenAI)
-      final key =
-          const String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
+      const key =
+          String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
       state = key.isEmpty ? MockClient() : OpenAIClient(key);
-      print('Selected client: ${key.isEmpty ? "MockClient" : "OpenAIClient"}');
+      Logger.info('Selected client: ${key.isEmpty ? "MockClient" : "OpenAIClient"}');
     } else {
       // Use gRPC connection (default)
       // Use mock client for testing when requested
       if (useMock) {
         state = MockGrpcClient();
-        print('Selected client: MockGrpcClient (mock mode)');
+        Logger.info('Selected client: MockGrpcClient (mock mode)');
         return;
       }
 
@@ -246,20 +247,20 @@ class ChatClientNotifier extends StateNotifier<ChatClient> {
             port: port,
             secure: effectiveSecure,
           );
-          print('Successfully re-initialized gRPC client');
+          Logger.info('Successfully re-initialized gRPC client');
         } catch (e) {
-          print('Error re-initializing gRPC client: $e');
+          Logger.error('Error re-initializing gRPC client: $e');
           // Continue with the existing client
         }
 
         // Set the client implementation that uses our gRPC service
         state = GrpcChatClient(chatGrpcClient);
-        print('Selected client: GrpcChatClient (real server connection)');
+        Logger.info('Selected client: GrpcChatClient (real server connection)');
       } catch (e) {
         // Fallback to mock if connection fails
-        print('Error creating gRPC client: $e, falling back to mock');
+        Logger.error('Error creating gRPC client: $e, falling back to mock');
         state = MockGrpcClient();
-        print('Selected client: MockGrpcClient (fallback due to error)');
+        Logger.info('Selected client: MockGrpcClient (fallback due to error)');
       }
     }
   }
@@ -313,7 +314,7 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
 
         // Check if we have an active conversation
         if (!grpcClient.hasActiveConversation) {
-          print('No active conversation detected, attempting to start one');
+          Logger.info('No active conversation detected, attempting to start one');
           try {
             // Try to start a new conversation
             final clientId = 'client-${DateTime.now().millisecondsSinceEpoch}';
@@ -325,14 +326,14 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
                 .read(conversationIdProvider.notifier)
                 .setConversationId(response.conversationId);
 
-            print(
+            Logger.info(
                 'Successfully started new conversation before sending message');
 
             // Inform the user
             chatHistory
                 .addAssistantMessage('Started a new conversation session.');
           } catch (e) {
-            print(
+            Logger.warning(
                 'Failed to start conversation: $e, will try with message send');
             // We'll let the message send flow handle it
           }
@@ -359,7 +360,7 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
         }
       });
     } catch (e) {
-      print('Error in chat stream: $e');
+      Logger.error('Error in chat stream: $e');
 
       // Update connection status to failed for real clients
       Future.microtask(() {
@@ -371,7 +372,7 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
       // Check for conversation not found errors and handle them specially
       if (e.toString().contains('Conversation') &&
           e.toString().contains('not found')) {
-        print(
+        Logger.info(
             'Detected conversation not found error, clearing conversation ID');
 
         // Clear the conversation ID in the provider
@@ -388,7 +389,7 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
                 'recovery-${DateTime.now().millisecondsSinceEpoch}';
             await grpcClient.startConversation(clientId: clientId);
           } catch (startError) {
-            print('Failed to restart conversation: $startError');
+            Logger.error('Failed to restart conversation: $startError');
           }
         }
 
@@ -451,11 +452,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
         final maxAttempts = ref.read(maxConnectionAttemptsProvider);
         final shouldAutoFallback = ref.read(autoFallbackToMockProvider);
 
-        print(
+        Logger.info(
             'Connection failure count: ${currentFailCount + 1}/$maxAttempts (Auto-fallback: $shouldAutoFallback)');
 
         if (shouldAutoFallback && currentFailCount + 1 >= maxAttempts) {
-          print(
+          Logger.info(
               'Maximum connection failures reached, auto-switching to mock mode');
 
           // Only toggle if we're not already in mock mode
@@ -497,9 +498,9 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
               .read(conversationIdProvider.notifier)
               .setConversationId(response.conversationId);
 
-          print('Successfully started new conversation after reset');
+          Logger.info('Successfully started new conversation after reset');
         } catch (e) {
-          print('Failed to start new conversation after reset: $e');
+          Logger.error('Failed to start new conversation after reset: $e');
           // We'll try again with the next message
         }
       }
@@ -508,7 +509,7 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
       chatHistory.addAssistantMessage(
           'Conversation has been reset. Starting a new session.');
     } catch (e) {
-      print('Error resetting conversation: $e');
+      Logger.error('Error resetting conversation: $e');
       chatHistory.addAssistantMessage('Error resetting conversation: $e');
     }
   }
@@ -519,12 +520,12 @@ class ConversationIdNotifier extends StateNotifier<String?> {
   ConversationIdNotifier() : super(null);
 
   void setConversationId(String? id) {
-    print('Setting conversation ID: $id');
+    Logger.debug('Setting conversation ID: $id');
     state = id;
   }
 
   void clearConversationId() {
-    print('Clearing conversation ID');
+    Logger.debug('Clearing conversation ID');
     state = null;
   }
 }
@@ -624,9 +625,9 @@ final chatGrpcClientProvider = Provider<ChatGrpcClient>((ref) {
       port: port,
       secure: effectiveSecure,
     );
-    print('Successfully initialized gRPC client at startup');
+    Logger.info('Successfully initialized gRPC client at startup');
   } catch (e) {
-    print('Error initializing gRPC client at startup: $e');
+    Logger.error('Error initializing gRPC client at startup: $e');
     // We don't rethrow here to avoid crashing the app during initialization
     // The client will attempt reconnection when needed
   }
@@ -682,7 +683,7 @@ final chatStreamProvider =
         secure: effectiveSecure,
       );
     } catch (e) {
-      print('Error initializing gRPC client in streamProvider: $e');
+      Logger.error('Error initializing gRPC client in streamProvider: $e');
       // Continue anyway and try to use the client
     }
 
@@ -691,11 +692,11 @@ final chatStreamProvider =
 
     // If we don't have a conversation ID, start a new one
     if (conversationId == null || conversationId.isEmpty) {
-      print('No active conversation ID, starting a new one');
+      Logger.info('No active conversation ID, starting a new one');
       // Start a new conversation asynchronously
       // We'll let the client handle the sequencing
     } else {
-      print('Using existing conversation ID: $conversationId');
+      Logger.info('Using existing conversation ID: $conversationId');
       // Ensure the client has the same conversation ID
       client.conversationId = conversationId;
     }
@@ -783,8 +784,8 @@ final initConnectionStatusProvider = Provider<void>((ref) {
     if (useMock) {
       ref.read(connectionStatusProvider.notifier).setConnected();
     } else if (useDirectApi) {
-      final key =
-          const String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
+      const key =
+          String.fromEnvironment('OPENAI_API_KEY', defaultValue: '');
       if (key.isEmpty) {
         ref.read(connectionStatusProvider.notifier).setDisconnected();
       } else {
@@ -847,7 +848,7 @@ final startConversationProvider = FutureProvider.autoDispose((ref) async {
 
     return response.conversationId;
   } catch (e) {
-    print('Error starting conversation in provider: $e');
+    Logger.error('Error starting conversation in provider: $e');
     // Clear the conversation ID on error
     ref.read(conversationIdProvider.notifier).clearConversationId();
     throw Exception('Failed to start conversation: $e');
@@ -877,8 +878,8 @@ final chatServiceClientProvider = Provider<ChatServiceClient>((ref) {
   // Create channel options
   final options = ChannelOptions(
     credentials:
-        secure ? ChannelCredentials.secure() : ChannelCredentials.insecure(),
-    codecRegistry: CodecRegistry(codecs: [GzipCodec(), IdentityCodec()]),
+        secure ? const ChannelCredentials.secure() : const ChannelCredentials.insecure(),
+    codecRegistry: CodecRegistry(codecs: const [GzipCodec(), IdentityCodec()]),
     connectionTimeout: const Duration(seconds: 15),
   );
 

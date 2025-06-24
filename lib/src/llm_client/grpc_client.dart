@@ -2,21 +2,23 @@ import 'package:grpc/grpc.dart';
 import '../models/message.dart' as app;
 import '../generated/llm_gateway/llm_service.pbgrpc.dart';
 import 'chat_client.dart';
+import '../utils/logger.dart';
 
 class GrpcClient implements ChatClient {
-  GrpcClient(
-      {required this.host,
-      required this.port,
-      this.secure = false,
-      this.defaultModel = 'gpt-3.5-turbo'}) {
-    // Initialize the channel when the client is created
-    _initializeChannel();
-  }
-
   final String host;
   final int port;
   final bool secure;
   final String defaultModel;
+
+  GrpcClient({
+    required this.host,
+    required this.port,
+    this.secure = false,
+    this.defaultModel = 'gpt-3.5-turbo'
+  }) {
+    // Initialize the channel when the client is created
+    _initializeChannel();
+  }
 
   late ClientChannel _channel;
   late LLMServiceClient _stub;
@@ -35,7 +37,7 @@ class GrpcClient implements ChatClient {
       );
       _stub = LLMServiceClient(_channel);
     } catch (e) {
-      print('Error initializing gRPC channel: $e');
+      Logger.error('Error initializing gRPC channel: $e');
     }
   }
 
@@ -43,7 +45,7 @@ class GrpcClient implements ChatClient {
     try {
       _channel.shutdown();
     } catch (e) {
-      print('Error shutting down gRPC channel: $e');
+      Logger.error('Error shutting down gRPC channel: $e');
     }
   }
 

@@ -115,11 +115,26 @@ class HomePage extends ConsumerWidget {
                           enableInteractiveSelection: true,
                           // Match text style with the original Text widget
                           style: Theme.of(context).textTheme.bodyMedium,
-                          // Optional: improved selection experience
-                          toolbarOptions: const ToolbarOptions(
-                            copy: true,
-                            selectAll: true,
-                          ),
+                          // Optional: improved selection experience using contextMenuBuilder
+                          contextMenuBuilder: (context, editableTextState) {
+                            return AdaptiveTextSelectionToolbar.buttonItems(
+                              buttonItems: [
+                                ContextMenuButtonItem(
+                                  label: 'Copy',
+                                  onPressed: () {
+                                    editableTextState.copySelection(SelectionChangedCause.toolbar);
+                                  },
+                                ),
+                                ContextMenuButtonItem(
+                                  label: 'Select All',
+                                  onPressed: () {
+                                    editableTextState.selectAll(SelectionChangedCause.toolbar);
+                                  },
+                                ),
+                              ],
+                              anchors: editableTextState.contextMenuAnchors,
+                            );
+                          },
                         ),
 
                         // Show a button to enable Mock Mode if this is an error message

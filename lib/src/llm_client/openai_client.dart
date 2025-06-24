@@ -24,14 +24,14 @@ class OpenAIClient implements ChatClient {
     });
     final request = http.Request('POST', url)
       ..headers.addAll({
-        'Authorization': 'Bearer ' + apiKey,
+        'Authorization': 'Bearer $apiKey',
         'Content-Type': 'application/json',
       })
       ..body = body;
 
     final response = await request.send();
     if (response.statusCode != 200) {
-      throw Exception('HTTP ' + response.statusCode.toString());
+      throw Exception('HTTP ${response.statusCode}');
     }
 
     await for (final chunk in response.stream
