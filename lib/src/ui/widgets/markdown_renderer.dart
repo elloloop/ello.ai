@@ -4,6 +4,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_highlighter/flutter_highlighter.dart';
 import 'package:flutter_highlighter/themes/github.dart';
 import 'package:flutter_highlighter/themes/github-dark.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
 
 /// A widget that renders markdown content with enhanced code block support,
@@ -22,8 +23,11 @@ class MarkdownRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
+    // Process LaTeX in the markdown before rendering
+    final processedData = _processLatex(data);
+    
     return MarkdownBody(
-      data: data,
+      data: processedData,
       selectable: selectable,
       styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
         // Style code blocks
@@ -63,6 +67,7 @@ class MarkdownRenderer extends StatelessWidget {
       ),
       builders: {
         'pre': CodeBlockBuilder(isDark: isDark),
+        'latex': LatexBuilder(), // Custom builder for LaTeX
       },
       // Enhanced link handling
       onTapLink: (text, href, title) {
@@ -72,6 +77,25 @@ class MarkdownRenderer extends StatelessWidget {
         }
       },
     );
+  }
+
+  /// Process LaTeX expressions in markdown text
+  String _processLatex(String text) {
+    // Convert inline LaTeX ($...$) to custom HTML elements
+    final inlineLatexRegex = RegExp(r'\$([^$]+)\$');
+    String processed = text.replaceAllMapped(inlineLatexRegex, (match) {
+      final latex = match.group(1)!;
+      return '<latex data-inline="true">$latex</latex>';
+    });
+
+    // Convert block LaTeX ($$...$$) to custom HTML elements
+    final blockLatexRegex = RegExp(r'\$\$([^$]+)\$\$');
+    processed = processed.replaceAllMapped(blockLatexRegex, (match) {
+      final latex = match.group(1)!;
+      return '<latex data-block="true">$latex</latex>';
+    });
+
+    return processed;
   }
 
   void _handleLinkTap(BuildContext context, String href) {
@@ -227,6 +251,42 @@ class CodeBlock extends StatelessWidget {
         duration: Duration(seconds: 2),
       ),
     );
+  }
+}
+
+/// Custom builder for LaTeX expressions
+class LatexBuilder extends MarkdownElementBuilder {
+  @override
+  Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final latex = element.textContent;
+    
+    if (latex.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final isBlock = element.attributes['data-block'] == 'true';
+    
+    try {
+      return Container(
+        margin: isBlock 
+          ? const EdgeInsets.symmetric(vertical: 8.0)
+          : EdgeInsets.zero,
+        child: Math.tex(
+          latex,
+          mathStyle: isBlock ? MathStyle.display : MathStyle.text,
+          textStyle: preferredStyle,
+        ),
+      );
+    } catch (e) {
+      // If LaTeX parsing fails, show the original text
+      return Text(
+        isBlock ? '\$\$$latex\$\$' : '\$$latex\$',
+        style: preferredStyle?.copyWith(
+          fontFamily: 'monospace',
+          color: Colors.red.withOpacity(0.7),
+        ),
+      );
+    }
   }
 }
 
