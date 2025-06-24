@@ -15,7 +15,6 @@ import '../services/chat_service_client.dart';
 import '../services/enhanced_grpc_client.dart';
 import '../utils/logger.dart';
 import '../services/mcp_health_service.dart';
-import 'package:http/http.dart' as http;
 
 /// ============================================================================
 /// CONFIGURATION MODELS
