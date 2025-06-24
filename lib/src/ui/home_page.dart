@@ -13,12 +13,35 @@ class HomePage extends ConsumerWidget {
     final messages = ref.watch(chatHistoryProvider);
     final controller = TextEditingController();
     final chatState = ref.watch(chatProvider);
+    final scrollController = ScrollController();
 
     // Initialize connection status (safely)
     ref.watch(initConnectionStatusProvider);
 
     final connectionStatus = ref.watch(connectionStatusProvider);
     final isMockMode = ref.watch(useMockGrpcProvider);
+
+    // Auto-scroll to bottom when new messages arrive, but throttle during streaming
+    ref.listen(chatHistoryProvider, (previous, current) {
+      if (current.isNotEmpty) {
+        final isNewMessage = previous?.length != current.length;
+        final isStreamingUpdate = current.last.isStreaming && 
+            current.last.content != (previous?.isNotEmpty == true ? previous!.last.content : '');
+        
+        if (isNewMessage || (isStreamingUpdate && current.last.content.length % 50 == 0)) {
+          // Only auto-scroll on new messages or every 50 characters during streaming
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (scrollController.hasClients) {
+              scrollController.animateTo(
+                scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -101,6 +124,7 @@ class HomePage extends ConsumerWidget {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: messages.length,
               itemBuilder: (context, index) {
