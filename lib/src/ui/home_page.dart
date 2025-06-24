@@ -68,123 +68,128 @@ class HomePage extends ConsumerWidget {
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
             itemCount: messages.length,
+            // Performance optimization: cache extent for smooth scrolling
+            cacheExtent: 1000,
             itemBuilder: (context, index) {
               final msg = messages[index];
-              return Align(
-                alignment: msg.isUser 
-                    ? Alignment.centerRight 
-                    : Alignment.centerLeft,
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  padding: const EdgeInsets.all(12),
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: msg.isUser
-                        ? Theme.of(context).colorScheme.primaryContainer
-                        : Theme.of(context).colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SelectableText(
-                        msg.content,
-                        enableInteractiveSelection: true,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        contextMenuBuilder: (context, editableTextState) {
-                          return AdaptiveTextSelectionToolbar.buttonItems(
-                            buttonItems: [
-                              ContextMenuButtonItem(
-                                label: 'Copy',
-                                onPressed: () {
-                                  editableTextState.copySelection(
-                                      SelectionChangedCause.toolbar);
-                                },
-                              ),
-                              ContextMenuButtonItem(
-                                label: 'Select All',
-                                onPressed: () {
-                                  editableTextState.selectAll(
-                                      SelectionChangedCause.toolbar);
-                                },
-                              ),
-                            ],
-                            anchors: editableTextState.contextMenuAnchors,
-                          );
-                        },
-                      ),
-
-                      // Show error handling buttons if needed
-                      if (!msg.isUser && msg.content.contains('Error'))
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12.0),
-                          child: Wrap(
-                            spacing: 8,
-                            children: [
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.offline_bolt,
-                                    color: Colors.orange),
-                                label: const Text('Enable Mock Mode',
-                                    style: TextStyle(color: Colors.orange)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.surface,
+              return RepaintBoundary(
+                // Performance optimization: isolate repaints per message
+                child: Align(
+                  alignment: msg.isUser 
+                      ? Alignment.centerRight 
+                      : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    padding: const EdgeInsets.all(12),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: msg.isUser
+                          ? Theme.of(context).colorScheme.primaryContainer
+                          : Theme.of(context).colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SelectableText(
+                          msg.content,
+                          enableInteractiveSelection: true,
+                          style: Theme.of(context).textTheme.bodyMedium,
+                          contextMenuBuilder: (context, editableTextState) {
+                            return AdaptiveTextSelectionToolbar.buttonItems(
+                              buttonItems: [
+                                ContextMenuButtonItem(
+                                  label: 'Copy',
+                                  onPressed: () {
+                                    editableTextState.copySelection(
+                                        SelectionChangedCause.toolbar);
+                                  },
                                 ),
-                                onPressed: () {
-                                  if (!ref.read(useMockGrpcProvider)) {
-                                    ref
-                                        .read(useMockGrpcProvider.notifier)
-                                        .toggle();
+                                ContextMenuButtonItem(
+                                  label: 'Select All',
+                                  onPressed: () {
+                                    editableTextState.selectAll(
+                                        SelectionChangedCause.toolbar);
+                                  },
+                                ),
+                              ],
+                              anchors: editableTextState.contextMenuAnchors,
+                            );
+                          },
+                        ),
 
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
+                        // Show error handling buttons if needed
+                        if (!msg.isUser && msg.content.contains('Error'))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12.0),
+                            child: Wrap(
+                              spacing: 8,
+                              children: [
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.offline_bolt,
+                                      color: Colors.orange),
+                                  label: const Text('Enable Mock Mode',
+                                      style: TextStyle(color: Colors.orange)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.surface,
+                                  ),
+                                  onPressed: () {
+                                    if (!ref.read(useMockGrpcProvider)) {
+                                      ref
+                                          .read(useMockGrpcProvider.notifier)
+                                          .toggle();
+
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Mock Mode enabled - using simulated responses'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Mock Mode is already enabled'),
+                                          backgroundColor: Colors.blue,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.refresh,
+                                      color: Colors.blue),
+                                  label: const Text('Retry Connection',
+                                      style: TextStyle(color: Colors.blue)),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.surface,
+                                  ),
+                                  onPressed: () {
+                                    ref
+                                        .read(currentChatClientProvider.notifier)
+                                        .updateClient();
+
+                                    ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
                                         content: Text(
-                                            'Mock Mode enabled - using simulated responses'),
-                                        backgroundColor: Colors.orange,
-                                      ),
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                            'Mock Mode is already enabled'),
+                                            'Retrying connection to server...'),
                                         backgroundColor: Colors.blue,
                                       ),
                                     );
-                                  }
-                                },
-                              ),
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.refresh,
-                                    color: Colors.blue),
-                                label: const Text('Retry Connection',
-                                    style: TextStyle(color: Colors.blue)),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      Theme.of(context).colorScheme.surface,
+                                  },
                                 ),
-                                onPressed: () {
-                                  ref
-                                      .read(currentChatClientProvider.notifier)
-                                      .updateClient();
-
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                          'Retrying connection to server...'),
-                                      backgroundColor: Colors.blue,
-                                    ),
-                                  );
-                                },
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -192,43 +197,45 @@ class HomePage extends ConsumerWidget {
           ),
         ),
         
-        // Input area
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  onSubmitted: (value) {
-                    ref.read(chatProvider.notifier).sendMessage(value.trim());
-                    controller.clear();
-                  },
-                  decoration: const InputDecoration(
-                    hintText: 'Say something...',
-                    border: OutlineInputBorder(),
-                  ),
+        // Input area - performance optimization: separate repaint boundary
+        RepaintBoundary(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                  width: 1,
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton.filled(
-                icon: const Icon(Icons.send),
-                onPressed: () {
-                  ref
-                      .read(chatProvider.notifier)
-                      .sendMessage(controller.text.trim());
-                  controller.clear();
-                },
-              ),
-            ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    onSubmitted: (value) {
+                      ref.read(chatProvider.notifier).sendMessage(value.trim());
+                      controller.clear();
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Say something...',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton.filled(
+                  icon: const Icon(Icons.send),
+                  onPressed: () {
+                    ref
+                        .read(chatProvider.notifier)
+                        .sendMessage(controller.text.trim());
+                    controller.clear();
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ],
