@@ -5,6 +5,7 @@ import '../providers/conversation_providers.dart';
 import 'debug/debug_settings.dart';
 import 'settings/model_picker.dart';
 import 'conversations/conversation_list_widget.dart';
+import 'conversations/conversation_shortcuts.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -24,7 +25,8 @@ class HomePage extends ConsumerWidget {
     final isMockMode = ref.watch(useMockGrpcProvider);
     final activeConversation = ref.watch(activeConversationProvider);
 
-    return Scaffold(
+    return ConversationShortcuts(
+      child: Scaffold(
       drawer: Drawer(
         child: Column(
           children: [
@@ -300,6 +302,15 @@ class HomePage extends ConsumerWidget {
           )
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await ref.read(conversationsProvider.notifier)
+              .createConversation(name: 'New Conversation');
+        },
+        tooltip: 'New Conversation (Ctrl+N)',
+        child: const Icon(Icons.add),
+      ),
+    ),
     );
   }
 }
