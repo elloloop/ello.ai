@@ -4,6 +4,7 @@
 
 ## Table of Contents
 
+- Download
 - Features
 - Quick Start
 - Architecture
@@ -13,6 +14,36 @@
 - Roadmap
 - Contributing
 - License
+
+## Download
+
+### 🎉 Version 0.1.0 - Desktop MVP Release
+
+Get ello.AI for your platform:
+
+#### 🖥️ Desktop Applications
+- **Windows**: [Download for Windows](https://github.com/elloloop/ello.ai/releases/download/v0.1.0/ello-ai-windows-v0.1.0.zip) *(requires Windows 10 or later)*
+- **macOS**: [Download for macOS](https://github.com/elloloop/ello.ai/releases/download/v0.1.0/ello-ai-macos-v0.1.0.dmg) *(requires macOS 10.14 or later)*
+- **Linux**: [Download for Linux](https://github.com/elloloop/ello.ai/releases/download/v0.1.0/ello-ai-linux-v0.1.0.tar.gz) *(requires glibc 2.17 or later)*
+
+#### 🌐 Web Application
+- **Browser**: [Launch ello.AI Web App](https://ello.ai) *(works on any modern browser)*
+
+#### 📱 Mobile Applications
+- **iOS**: [Download from App Store](https://apps.apple.com/app/ello-ai) *(coming soon)*
+- **Android**: [Download from Google Play](https://play.google.com/store/apps/details?id=ai.ello.app) *(coming soon)*
+
+#### 🔧 Build from Source
+```bash
+git clone https://github.com/elloloop/ello.ai.git
+cd ello.ai
+flutter pub get
+flutter run  # or flutter build <platform> --release
+```
+
+> 📋 **System Requirements**: See our [compatibility guide](docs/SYSTEM_REQUIREMENTS.md) for detailed platform requirements.
+
+> 🛡️ **Security**: All releases are signed and verified. Check the [release page](https://github.com/elloloop/ello.ai/releases) for checksums.
 
 ## Features
 
