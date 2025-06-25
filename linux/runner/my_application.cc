@@ -5,6 +5,10 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include <sys/utsname.h>
+#include <unistd.h>
+#include <string.h>
+
 #include "flutter/generated_plugin_registrant.h"
 
 struct _MyApplication {
@@ -40,11 +44,11 @@ static void my_application_activate(GApplication* application) {
   if (use_header_bar) {
     GtkHeaderBar* header_bar = GTK_HEADER_BAR(gtk_header_bar_new());
     gtk_widget_show(GTK_WIDGET(header_bar));
-    gtk_header_bar_set_title(header_bar, "ello_ai");
+    gtk_header_bar_set_title(header_bar, "ello.AI");
     gtk_header_bar_set_show_close_button(header_bar, TRUE);
     gtk_window_set_titlebar(window, GTK_WIDGET(header_bar));
   } else {
-    gtk_window_set_title(window, "ello_ai");
+    gtk_window_set_title(window, "ello.AI");
   }
 
   gtk_window_set_default_size(window, 1280, 720);
@@ -58,6 +62,9 @@ static void my_application_activate(GApplication* application) {
   gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
+
+  // Set up platform channel for desktop-specific functionality
+  setup_platform_channel(view);
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
@@ -127,4 +134,93 @@ MyApplication* my_application_new() {
                                      "application-id", APPLICATION_ID,
                                      "flags", G_APPLICATION_NON_UNIQUE,
                                      nullptr));
+}
+
+// Platform channel method call handler
+static void platform_channel_method_call_cb(FlMethodChannel* channel,
+                                           FlMethodCall* method_call,
+                                           gpointer user_data) {
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (strcmp(method, "getPlatformInfo") == 0) {
+    g_autoptr(FlValue) result = fl_value_new_map();
+    fl_value_set_string_take(result, "platform", fl_value_new_string("linux"));
+    
+    // Get Linux distribution info
+    FILE* os_release = fopen("/etc/os-release", "r");
+    if (os_release) {
+      char line[256];
+      while (fgets(line, sizeof(line), os_release)) {
+        if (strncmp(line, "PRETTY_NAME=", 12) == 0) {
+          // Remove quotes and newline
+          char* name = line + 12;
+          if (name[0] == '"') name++;
+          char* end = strchr(name, '"');
+          if (end) *end = '\0';
+          char* newline = strchr(name, '\n');
+          if (newline) *newline = '\0';
+          fl_value_set_string_take(result, "version", fl_value_new_string(name));
+          break;
+        }
+      }
+      fclose(os_release);
+    }
+    
+    // Get architecture
+    struct utsname system_info;
+    if (uname(&system_info) == 0) {
+      fl_value_set_string_take(result, "arch", fl_value_new_string(system_info.machine));
+    }
+
+    fl_method_call_respond_success(method_call, result, nullptr);
+  }
+  else if (strcmp(method, "setWindowTitle") == 0) {
+    FlValue* args = fl_method_call_get_args(method_call);
+    FlValue* title_value = fl_value_lookup_string(args, "title");
+    if (title_value && fl_value_get_type(title_value) == FL_VALUE_TYPE_STRING) {
+      const gchar* title = fl_value_get_string(title_value);
+      // Get the main window - this is a simplified approach
+      GtkWidget* window = gtk_widget_get_toplevel(GTK_WIDGET(user_data));
+      if (GTK_IS_WINDOW(window)) {
+        gtk_window_set_title(GTK_WINDOW(window), title);
+      }
+      fl_method_call_respond_success(method_call, fl_value_new_bool(TRUE), nullptr);
+    } else {
+      fl_method_call_respond_success(method_call, fl_value_new_bool(FALSE), nullptr);
+    }
+  }
+  else if (strcmp(method, "getSystemTheme") == 0) {
+    // Check GTK theme preference
+    GtkSettings* settings = gtk_settings_get_default();
+    gboolean prefer_dark = FALSE;
+    g_object_get(settings, "gtk-application-prefer-dark-theme", &prefer_dark, nullptr);
+    
+    const char* theme = prefer_dark ? "dark" : "light";
+    fl_method_call_respond_success(method_call, fl_value_new_string(theme), nullptr);
+  }
+  else if (strcmp(method, "getAppVersion") == 0) {
+    g_autoptr(FlValue) result = fl_value_new_map();
+    fl_value_set_string_take(result, "version", fl_value_new_string("0.1.0"));
+    fl_value_set_string_take(result, "platform", fl_value_new_string("Linux"));
+    fl_value_set_string_take(result, "appId", fl_value_new_string(APPLICATION_ID));
+    fl_method_call_respond_success(method_call, result, nullptr);
+  }
+  else if (strcmp(method, "isRunningAsAdmin") == 0) {
+    gboolean is_root = (getuid() == 0);
+    fl_method_call_respond_success(method_call, fl_value_new_bool(is_root), nullptr);
+  }
+  else {
+    fl_method_call_respond_not_implemented(method_call, nullptr);
+  }
+}
+
+// Set up platform channel
+static void setup_platform_channel(FlView* view) {
+  g_autoptr(FlStandardMethodCodec) codec = fl_standard_method_codec_new();
+  g_autoptr(FlMethodChannel) channel = fl_method_channel_new(
+      fl_engine_get_binary_messenger(fl_view_get_engine(view)),
+      "ello.ai/desktop",
+      FL_METHOD_CODEC(codec));
+  
+  fl_method_channel_set_method_call_handler(channel, platform_channel_method_call_cb, view, nullptr);
 }
