@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/dependencies.dart';
 import 'debug/debug_settings.dart';
 import 'settings/model_picker.dart';
+import 'widgets/markdown_renderer.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -109,35 +110,42 @@ class HomePage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SelectableText(
-                          msg.content,
-                          // Enable text selection and contextual menu
-                          enableInteractiveSelection: true,
-                          // Match text style with the original Text widget
-                          style: Theme.of(context).textTheme.bodyMedium,
-                          // Optional: improved selection experience using contextMenuBuilder
-                          contextMenuBuilder: (context, editableTextState) {
-                            return AdaptiveTextSelectionToolbar.buttonItems(
-                              buttonItems: [
-                                ContextMenuButtonItem(
-                                  label: 'Copy',
-                                  onPressed: () {
-                                    editableTextState.copySelection(
-                                        SelectionChangedCause.toolbar);
-                                  },
-                                ),
-                                ContextMenuButtonItem(
-                                  label: 'Select All',
-                                  onPressed: () {
-                                    editableTextState.selectAll(
-                                        SelectionChangedCause.toolbar);
-                                  },
-                                ),
-                              ],
-                              anchors: editableTextState.contextMenuAnchors,
-                            );
-                          },
-                        ),
+                        // Use MarkdownRenderer for assistant messages, SelectableText for user messages
+                        if (msg.isUser)
+                          SelectableText(
+                            msg.content,
+                            // Enable text selection and contextual menu
+                            enableInteractiveSelection: true,
+                            // Match text style with the original Text widget
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            // Optional: improved selection experience using contextMenuBuilder
+                            contextMenuBuilder: (context, editableTextState) {
+                              return AdaptiveTextSelectionToolbar.buttonItems(
+                                buttonItems: [
+                                  ContextMenuButtonItem(
+                                    label: 'Copy',
+                                    onPressed: () {
+                                      editableTextState.copySelection(
+                                          SelectionChangedCause.toolbar);
+                                    },
+                                  ),
+                                  ContextMenuButtonItem(
+                                    label: 'Select All',
+                                    onPressed: () {
+                                      editableTextState.selectAll(
+                                          SelectionChangedCause.toolbar);
+                                    },
+                                  ),
+                                ],
+                                anchors: editableTextState.contextMenuAnchors,
+                              );
+                            },
+                          )
+                        else
+                          MarkdownRenderer(
+                            data: msg.content,
+                            selectable: true,
+                          ),
 
                         // Show a button to enable Mock Mode if this is an error message
                         if (!msg.isUser && msg.content.contains('Error'))
