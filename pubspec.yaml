@@ -20,6 +20,8 @@ dependencies:
   protobuf: ^3.1.0 # Version compatible with protoc_plugin
   fixnum: ^1.1.0
   uuid: ^4.3.3 # For generating unique message IDs
+  flutter_secure_storage: ^9.2.2 # For secure API key storage
+  crypto: ^3.0.3 # For AES encryption fallback
   flutter_test:
     sdk: flutter
 

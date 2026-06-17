@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/dependencies.dart';
 import '../../services/chat_service_client.dart';
+import '../settings/api_key_manager.dart';
 
 /// A widget that displays debug settings only in debug mode
 class DebugSettingsButton extends ConsumerWidget {
@@ -253,6 +254,11 @@ class DebugSettingsDialog extends ConsumerWidget {
                 ],
               );
             }),
+            
+            const Divider(),
+            
+            // API Key Management section
+            const ApiKeyManager(),
           ],
         ),
       ),
