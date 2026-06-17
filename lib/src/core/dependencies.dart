@@ -361,7 +361,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
         }
       });
     } catch (e) {
-      Logger.error('Error in chat stream: $e');
+      Logger.error('Error in chat stream: $e', exception: e, extra: {
+        'isMock': isMock,
+        'clientType': client.runtimeType.toString(),
+        'messageCount': messages.length,
+      });
 
       // Update connection status to failed for real clients
       Future.microtask(() {
@@ -390,7 +394,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
                 'recovery-${DateTime.now().millisecondsSinceEpoch}';
             await grpcClient.startConversation(clientId: clientId);
           } catch (startError) {
-            Logger.error('Failed to restart conversation: $startError');
+            Logger.error('Failed to restart conversation: $startError', 
+              exception: startError, extra: {
+                'originalError': e.toString(),
+                'clientType': client.runtimeType.toString(),
+              });
           }
         }
 
@@ -501,7 +509,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
 
           Logger.info('Successfully started new conversation after reset');
         } catch (e) {
-          Logger.error('Failed to start new conversation after reset: $e');
+          Logger.error('Failed to start new conversation after reset: $e', 
+            exception: e, extra: {
+              'operation': 'conversation_reset',
+              'clientType': grpcClient.runtimeType.toString(),
+            });
           // We'll try again with the next message
         }
       }
@@ -510,7 +522,9 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
       chatHistory.addAssistantMessage(
           'Conversation has been reset. Starting a new session.');
     } catch (e) {
-      Logger.error('Error resetting conversation: $e');
+      Logger.error('Error resetting conversation: $e', exception: e, extra: {
+        'operation': 'conversation_reset',
+      });
       chatHistory.addAssistantMessage('Error resetting conversation: $e');
     }
   }
