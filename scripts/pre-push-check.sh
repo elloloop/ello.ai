@@ -162,6 +162,10 @@ echo ""
 print_status "Your code is ready to be pushed and should pass the CI/CD pipeline."
 print_status "You can now safely run: git push"
 echo ""
+print_status "💡 For release preparation, also run:"
+print_status "   ./scripts/test-desktop-builds.sh  # Test desktop builds"
+print_status "   ./scripts/prepare-release.sh v<version>  # Prepare release"
+echo ""
 
 # Optional: Ask if user wants to push now
 read -p "Do you want to push your changes now? (y/N): " -n 1 -r
