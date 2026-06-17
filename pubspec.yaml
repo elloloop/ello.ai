@@ -20,6 +20,7 @@ dependencies:
   protobuf: ^3.1.0 # Version compatible with protoc_plugin
   fixnum: ^1.1.0
   uuid: ^4.3.3 # For generating unique message IDs
+  path: ^1.8.3 # For config file path management
   flutter_test:
     sdk: flutter
 
