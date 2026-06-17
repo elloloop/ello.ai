@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/dependencies.dart';
+import '../providers/conversation_providers.dart';
 import 'debug/debug_settings.dart';
 import 'settings/model_picker.dart';
+import 'conversations/conversation_list_widget.dart';
+import 'conversations/conversation_shortcuts.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -14,26 +17,74 @@ class HomePage extends ConsumerWidget {
 
     // Initialize connection status (safely)
     ref.watch(initConnectionStatusProvider);
+    
+    // Initialize conversation sync
+    ref.watch(conversationSyncProvider);
 
     final connectionStatus = ref.watch(connectionStatusProvider);
     final isMockMode = ref.watch(useMockGrpcProvider);
+    final activeConversation = ref.watch(activeConversationProvider);
 
-    return Scaffold(
+    return ConversationShortcuts(
+      child: Scaffold(
+      drawer: Drawer(
+        child: Column(
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.chat_bubble_outline, size: 32),
+                  SizedBox(width: 12),
+                  Text(
+                    'Conversations',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await ref.read(conversationsProvider.notifier)
+                            .createConversation(name: 'New Conversation');
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                        }
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('New Chat'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Expanded(
+              child: ConversationListWidget(),
+            ),
+          ],
+        ),
+      ),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('ello.AI'),
-            if (ref.watch(hasActiveConversationProvider))
-              GestureDetector(
-                onTap: () => showConversationIdSnackbar(context, ref),
-                child: Text(
-                  'Active conversation',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.secondary,
-                      ),
-                ),
+            Text(activeConversation?.name ?? 'ello.AI'),
+            if (activeConversation != null)
+              Text(
+                activeConversation.preview,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
           ],
         ),
@@ -251,6 +302,15 @@ class HomePage extends ConsumerWidget {
           )
         ],
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await ref.read(conversationsProvider.notifier)
+              .createConversation(name: 'New Conversation');
+        },
+        tooltip: 'New Conversation (Ctrl+N)',
+        child: const Icon(Icons.add),
+      ),
+    ),
     );
   }
 }

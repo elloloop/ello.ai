@@ -10,12 +10,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:ello_ai/main.dart';
 import 'package:ello_ai/src/core/dependencies.dart';
+import 'package:ello_ai/src/providers/conversation_providers.dart';
 
 void main() {
   group('ElloApp Widget Tests', () {
     ProviderContainer makeMockedContainer() {
       return ProviderContainer(overrides: [
-        chatHistoryProvider.overrideWith((ref) => ChatHistoryNotifier()),
+        chatHistoryProvider.overrideWith((ref) => ChatHistoryNotifier(ref)),
         connectionStatusProvider
             .overrideWith((ref) => ConnectionStatusNotifier()..setConnected()),
         useMockGrpcProvider.overrideWith((ref) => MockGrpcNotifier()..toggle()),
@@ -30,6 +31,7 @@ void main() {
         grpcSecureProvider
             .overrideWith((ref) => GrpcSecureNotifier()..setSecure(false)),
         initConnectionStatusProvider.overrideWith((ref) {}),
+        conversationSyncProvider.overrideWith((ref) {}),
         // Add more overrides as needed for other providers
       ]);
     }
@@ -75,6 +77,27 @@ void main() {
       expect(find.byType(IconButton), findsWidgets);
       final iconButtons = find.byType(IconButton);
       expect(iconButtons, findsAtLeastNWidgets(2));
+    });
+
+    testWidgets('App has drawer for conversation management',
+        (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      expect(find.byType(Drawer), findsOneWidget);
+    });
+
+    testWidgets('App displays conversations drawer with expected content',
+        (WidgetTester tester) async {
+      final container = makeMockedContainer();
+      await pumpApp(tester, container);
+      
+      // Open the drawer
+      await tester.tap(find.byType(DrawerButton));
+      await tester.pumpAndSettle();
+      
+      expect(find.text('Conversations'), findsOneWidget);
+      expect(find.text('New Chat'), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsOneWidget);
     });
 
     testWidgets('Chat messages list view is present',
