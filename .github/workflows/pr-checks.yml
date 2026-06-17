@@ -49,6 +49,26 @@ jobs:
       - name: Run Flutter tests
         run: flutter test --coverage --reporter=github
 
+      - name: Check test coverage threshold
+        run: |
+          # Install lcov tools for coverage analysis
+          sudo apt-get update && sudo apt-get install -y lcov
+          
+          # Generate coverage report
+          genhtml coverage/lcov.info -o coverage/html
+          
+          # Extract coverage percentage
+          COVERAGE=$(lcov --summary coverage/lcov.info 2>&1 | grep -o 'lines......[0-9.]*%' | grep -o '[0-9.]*%' | sed 's/%//')
+          echo "Test coverage: ${COVERAGE}%"
+          
+          # Check if coverage meets 80% threshold
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "❌ Test coverage ${COVERAGE}% is below required 80% threshold"
+            exit 1
+          else
+            echo "✅ Test coverage ${COVERAGE}% meets the 80% threshold"
+          fi
+
       - name: Upload coverage to Codecov (optional)
         if: success()
         uses: codecov/codecov-action@v3

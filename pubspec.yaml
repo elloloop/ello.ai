@@ -22,6 +22,8 @@ dependencies:
   uuid: ^4.3.3 # For generating unique message IDs
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
 
 dev_dependencies:
   flutter_lints: ^3.0.0
