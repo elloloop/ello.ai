@@ -21,33 +21,27 @@ export 'llm_service.pb.dart';
 
 @$pb.GrpcServiceName('llm_gateway.LLMService')
 class LLMServiceClient extends $grpc.Client {
-  static final _$chatCompletionStream =
-      $grpc.ClientMethod<$0.ChatRequest, $0.ChatResponse>(
-          '/llm_gateway.LLMService/ChatCompletionStream',
-          ($0.ChatRequest value) => value.writeToBuffer(),
-          ($core.List<$core.int> value) => $0.ChatResponse.fromBuffer(value));
-  static final _$chatCompletion =
-      $grpc.ClientMethod<$0.ChatRequest, $0.ChatCompletionResponse>(
-          '/llm_gateway.LLMService/ChatCompletion',
-          ($0.ChatRequest value) => value.writeToBuffer(),
-          ($core.List<$core.int> value) =>
-              $0.ChatCompletionResponse.fromBuffer(value));
+  static final _$chatCompletionStream = $grpc.ClientMethod<$0.ChatRequest, $0.ChatResponse>(
+      '/llm_gateway.LLMService/ChatCompletionStream',
+      ($0.ChatRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ChatResponse.fromBuffer(value));
+  static final _$chatCompletion = $grpc.ClientMethod<$0.ChatRequest, $0.ChatCompletionResponse>(
+      '/llm_gateway.LLMService/ChatCompletion',
+      ($0.ChatRequest value) => value.writeToBuffer(),
+      ($core.List<$core.int> value) => $0.ChatCompletionResponse.fromBuffer(value));
 
   LLMServiceClient($grpc.ClientChannel channel,
       {$grpc.CallOptions? options,
       $core.Iterable<$grpc.ClientInterceptor>? interceptors})
       : super(channel, options: options, interceptors: interceptors);
 
-  $grpc.ResponseStream<$0.ChatResponse> chatCompletionStream(
-      $0.ChatRequest request,
+  $grpc.ResponseStream<$0.ChatResponse> chatCompletionStream($0.ChatRequest request,
       {$grpc.CallOptions? options}) {
-    return $createStreamingCall(
-        _$chatCompletionStream, $async.Stream.fromIterable([request]),
+    return $createStreamingCall(_$chatCompletionStream, $async.Stream.fromIterable([request]),
         options: options);
   }
 
-  $grpc.ResponseFuture<$0.ChatCompletionResponse> chatCompletion(
-      $0.ChatRequest request,
+  $grpc.ResponseFuture<$0.ChatCompletionResponse> chatCompletion($0.ChatRequest request,
       {$grpc.CallOptions? options}) {
     return $createUnaryCall(_$chatCompletion, request, options: options);
   }
@@ -84,8 +78,6 @@ abstract class LLMServiceBase extends $grpc.Service {
     return chatCompletion(call, await request);
   }
 
-  $async.Stream<$0.ChatResponse> chatCompletionStream(
-      $grpc.ServiceCall call, $0.ChatRequest request);
-  $async.Future<$0.ChatCompletionResponse> chatCompletion(
-      $grpc.ServiceCall call, $0.ChatRequest request);
+  $async.Stream<$0.ChatResponse> chatCompletionStream($grpc.ServiceCall call, $0.ChatRequest request);
+  $async.Future<$0.ChatCompletionResponse> chatCompletion($grpc.ServiceCall call, $0.ChatRequest request);
 }

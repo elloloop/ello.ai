@@ -10,7 +10,12 @@ class GrpcChatClient implements ChatClient {
   GrpcChatClient(this._client);
 
   @override
-  Stream<String> chat({required List<Message> messages, String? model}) {
+  Stream<String> chat({
+    required List<Message> messages, 
+    String? model,
+    double? temperature,
+    double? topP,
+  }) {
     // Stream the responses and filter for assistant responses
     return _client
         .chatStream(messages)

@@ -9,9 +9,14 @@ class OpenAIClient implements ChatClient {
   final String apiKey;
 
   @override
-  Stream<String> chat({required List<Message> messages, String? model}) async* {
+  Stream<String> chat({
+    required List<Message> messages, 
+    String? model,
+    double? temperature,
+    double? topP,
+  }) async* {
     final url = Uri.https('api.openai.com', '/v1/chat/completions');
-    final body = jsonEncode({
+    final body = <String, dynamic>{
       'model': model ?? 'gpt-3.5-turbo',
       'stream': true,
       'messages': [
@@ -21,13 +26,24 @@ class OpenAIClient implements ChatClient {
             'content': m.content,
           }
       ],
-    });
+    };
+
+    // Add temperature if provided
+    if (temperature != null) {
+      body['temperature'] = temperature;
+    }
+
+    // Add top_p if provided
+    if (topP != null) {
+      body['top_p'] = topP;
+    }
+
     final request = http.Request('POST', url)
       ..headers.addAll({
         'Authorization': 'Bearer $apiKey',
         'Content-Type': 'application/json',
       })
-      ..body = body;
+      ..body = jsonEncode(body);
 
     final response = await request.send();
     if (response.statusCode != 200) {

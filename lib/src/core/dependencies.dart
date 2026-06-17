@@ -132,6 +132,24 @@ class DirectApiNotifier extends StateNotifier<bool> {
   }
 }
 
+/// Temperature notifier
+class TemperatureNotifier extends StateNotifier<double> {
+  TemperatureNotifier() : super(0.7);
+
+  void updateTemperature(double value) {
+    state = value.clamp(0.0, 2.0);
+  }
+}
+
+/// Top-p notifier
+class TopPNotifier extends StateNotifier<double> {
+  TopPNotifier() : super(1.0);
+
+  void updateTopP(double value) {
+    state = value.clamp(0.0, 1.0);
+  }
+}
+
 /// Chat client notifier
 class ChatClientNotifier extends StateNotifier<ChatClient> {
   ChatClientNotifier(this.ref) : super(_createInitialClient(ref));
@@ -342,7 +360,12 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
       }
 
       await for (final chunk
-          in client.chat(messages: messages, model: selectedModel)) {
+          in client.chat(
+        messages: messages, 
+        model: selectedModel,
+        temperature: ref.read(temperatureProvider),
+        topP: ref.read(topPProvider),
+      )) {
         if (messages.isEmpty || messages.last.isUser) {
           chatHistory.addAssistantMessage(chunk);
         } else {
@@ -568,6 +591,14 @@ final useMockGrpcProvider =
 /// Direct API provider
 final useDirectApiProvider = StateNotifierProvider<DirectApiNotifier, bool>(
     (ref) => DirectApiNotifier());
+
+/// Temperature provider
+final temperatureProvider = StateNotifierProvider<TemperatureNotifier, double>(
+    (ref) => TemperatureNotifier());
+
+/// Top-p provider
+final topPProvider = StateNotifierProvider<TopPNotifier, double>(
+    (ref) => TopPNotifier());
 
 /// gRPC Web mode provider
 // No longer needed as we only use standard gRPC with TLS for Cloud Run

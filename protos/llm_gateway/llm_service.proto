@@ -18,6 +18,7 @@ message ChatRequest {
   float temperature = 3;
   int32 max_tokens = 4;
   string user_id = 5;
+  float top_p = 6;
 }
 
 // Single message in a conversation
