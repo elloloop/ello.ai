@@ -13,26 +13,28 @@ class MockGrpcClient implements ChatClient {
     // Get the last user message
     final lastUserMessage = messages.lastWhere((m) => m.isUser);
 
-    // Simple response simulation
-    yield 'Hello from MockGrpcClient! ';
-    if (model != null) {
-      yield 'Using model: $model. ';
-      await Future.delayed(const Duration(milliseconds: 100));
-    }
-    await Future.delayed(const Duration(milliseconds: 100));
-    yield 'I\'m simulating a gRPC stream response. ';
-    await Future.delayed(const Duration(milliseconds: 100));
-    yield 'You said: ';
-    await Future.delayed(const Duration(milliseconds: 100));
+    // Create a longer, more realistic response to demonstrate streaming
+    final responses = [
+      'Hello from MockGrpcClient! ',
+      'I received your message: "${lastUserMessage.content}". ',
+      'This is a simulated streaming response that demonstrates ',
+      'how tokens appear progressively as they arrive from the server. ',
+      'Each chunk is delivered with realistic timing to simulate ',
+      'the experience of a real language model generating text. ',
+      '\n\nThe streaming implementation includes:\n',
+      '• Debounced UI updates to prevent jank\n',
+      '• Efficient text rendering with StreamingText widget\n', 
+      '• Interrupt capability to stop responses early\n',
+      '• Visual indicators for active streaming\n',
+      '• Smooth user experience during token arrival\n\n',
+      'Model used: ${model ?? "default"}\n',
+      'Response completed successfully! ✅'
+    ];
 
-    // Echo back the message in chunks
-    final words = lastUserMessage.content.split(' ');
-    for (final word in words) {
-      yield '$word ';
-      await Future.delayed(const Duration(milliseconds: 50));
+    for (final chunk in responses) {
+      yield chunk;
+      // Vary the delay to simulate realistic LLM response timing
+      await Future.delayed(Duration(milliseconds: 30 + (chunk.length * 2)));
     }
-
-    await Future.delayed(const Duration(milliseconds: 200));
-    yield '\n\nThis is a simulated response since the actual gRPC server is not connected.';
   }
 }

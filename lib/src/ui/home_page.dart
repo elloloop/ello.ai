@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/dependencies.dart';
 import 'debug/debug_settings.dart';
 import 'settings/model_picker.dart';
+import 'components/streaming_text.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -11,12 +12,36 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final messages = ref.watch(chatHistoryProvider);
     final controller = TextEditingController();
+    final chatState = ref.watch(chatProvider);
+    final scrollController = ScrollController();
 
     // Initialize connection status (safely)
     ref.watch(initConnectionStatusProvider);
 
     final connectionStatus = ref.watch(connectionStatusProvider);
     final isMockMode = ref.watch(useMockGrpcProvider);
+
+    // Auto-scroll to bottom when new messages arrive, but throttle during streaming
+    ref.listen(chatHistoryProvider, (previous, current) {
+      if (current.isNotEmpty) {
+        final isNewMessage = previous?.length != current.length;
+        final isStreamingUpdate = current.last.isStreaming && 
+            current.last.content != (previous?.isNotEmpty == true ? previous!.last.content : '');
+        
+        if (isNewMessage || (isStreamingUpdate && current.last.content.length % 50 == 0)) {
+          // Only auto-scroll on new messages or every 50 characters during streaming
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (scrollController.hasClients) {
+              scrollController.animateTo(
+                scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 100),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        }
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -38,6 +63,15 @@ class HomePage extends ConsumerWidget {
           ],
         ),
         actions: [
+          // Interrupt button for streaming responses
+          if (chatState is AsyncLoading)
+            IconButton(
+              icon: const Icon(Icons.stop, color: Colors.red),
+              tooltip: 'Stop Response',
+              onPressed: () {
+                ref.read(chatProvider.notifier).cancelCurrentStream();
+              },
+            ),
           // Reset conversation button
           if (ref.watch(hasActiveConversationProvider))
             IconButton(
@@ -90,6 +124,7 @@ class HomePage extends ConsumerWidget {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: scrollController,
               padding: const EdgeInsets.all(16),
               itemCount: messages.length,
               itemBuilder: (context, index) {
@@ -109,13 +144,12 @@ class HomePage extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SelectableText(
-                          msg.content,
-                          // Enable text selection and contextual menu
-                          enableInteractiveSelection: true,
-                          // Match text style with the original Text widget
+                        // Use StreamingText for efficient streaming updates
+                        StreamingText(
+                          content: msg.content,
                           style: Theme.of(context).textTheme.bodyMedium,
-                          // Optional: improved selection experience using contextMenuBuilder
+                          enableInteractiveSelection: true,
+                          updateDebounceMs: msg.isStreaming ? 16 : 0, // Faster updates for streaming
                           contextMenuBuilder: (context, editableTextState) {
                             return AdaptiveTextSelectionToolbar.buttonItems(
                               buttonItems: [
@@ -138,6 +172,35 @@ class HomePage extends ConsumerWidget {
                             );
                           },
                         ),
+
+                        // Show streaming indicator for active streaming messages
+                        if (msg.isStreaming)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8.0),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Streaming...',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
 
                         // Show a button to enable Mock Mode if this is an error message
                         if (!msg.isUser && msg.content.contains('Error'))
@@ -229,23 +292,48 @@ class HomePage extends ConsumerWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
-                    onSubmitted: (value) {
+                    enabled: chatState is! AsyncLoading,
+                    onSubmitted: chatState is AsyncLoading ? null : (value) {
                       ref.read(chatProvider.notifier).sendMessage(value.trim());
                       controller.clear();
                     },
-                    decoration:
-                        const InputDecoration(hintText: 'Say something...'),
+                    decoration: InputDecoration(
+                      hintText: chatState is AsyncLoading 
+                          ? 'Waiting for response...' 
+                          : 'Say something...',
+                      suffixIcon: chatState is AsyncLoading
+                          ? const Padding(
+                              padding: EdgeInsets.all(12.0),
+                              child: SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : null,
+                    ),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    ref
-                        .read(chatProvider.notifier)
-                        .sendMessage(controller.text.trim());
-                    controller.clear();
-                  },
-                )
+                const SizedBox(width: 8),
+                // Show stop button during streaming, send button otherwise
+                if (chatState is AsyncLoading)
+                  IconButton(
+                    icon: const Icon(Icons.stop, color: Colors.red),
+                    onPressed: () {
+                      ref.read(chatProvider.notifier).cancelCurrentStream();
+                    },
+                    tooltip: 'Stop Response',
+                  )
+                else
+                  IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: controller.text.trim().isEmpty ? null : () {
+                      ref
+                          .read(chatProvider.notifier)
+                          .sendMessage(controller.text.trim());
+                      controller.clear();
+                    },
+                  ),
               ],
             ),
           )
