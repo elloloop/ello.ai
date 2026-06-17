@@ -201,9 +201,31 @@ The server listens on port 50051 by default and provides an echo service for tes
 ## Contributing
 
 1. Fork and create a feature branch
-2. Write unit and widget tests
+2. Write unit, widget, and integration tests
 3. Run `dart format` and `flutter analyze`
 4. Open a pull request against `main`
+
+### Testing
+
+The project includes comprehensive tests:
+
+- **Widget Tests**: Located in `test/widget_test.dart` for UI component testing
+- **Integration Tests**: Located in `test/integration/` for end-to-end functionality testing
+  - `headless_chat_test.dart` - Tests complete chat flow without UI dependencies
+  - `chat_integration_test.dart` - Alternative widget-based integration tests
+
+Run tests using:
+
+```bash
+# All tests
+flutter test
+
+# Integration tests only
+flutter test test/integration/
+
+# Using the integration test runner
+./scripts/run_integration_tests.sh
+```
 
 ### CI/CD Pipeline
 
