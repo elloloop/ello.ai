@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/dependencies.dart';
 import 'debug/debug_settings.dart';
+import 'debug/mcp_latency_badge.dart';
 import 'settings/model_picker.dart';
 
 class HomePage extends ConsumerWidget {
@@ -14,6 +15,12 @@ class HomePage extends ConsumerWidget {
 
     // Initialize connection status (safely)
     ref.watch(initConnectionStatusProvider);
+    
+    // Initialize MCP auto-selection on first build
+    ref.watch(autoMcpModeProvider);
+    
+    // Start health monitoring if in local mode
+    ref.watch(mcpHealthMonitorProvider);
 
     final connectionStatus = ref.watch(connectionStatusProvider);
     final isMockMode = ref.watch(useMockGrpcProvider);
@@ -83,6 +90,7 @@ class HomePage extends ConsumerWidget {
             ),
           ),
           const ModelPicker(),
+          const McpLatencyBadge(),
           const DebugSettingsButton(),
         ],
       ),

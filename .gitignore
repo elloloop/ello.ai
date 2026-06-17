@@ -70,3 +70,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Flutter binaries
+flutter/
+flutter.tar.xz
+
