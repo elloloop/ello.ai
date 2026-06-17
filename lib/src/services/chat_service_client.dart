@@ -543,6 +543,7 @@ class ChatGrpcClient {
   Future<StartConversationResponse> startConversation({
     String clientId = '',
     String conversationId = '',
+    String systemPrompt = '',
   }) async {
     try {
       if (_client == null) {
@@ -562,6 +563,12 @@ class ChatGrpcClient {
       final request = StartConversationRequest()
         ..clientId = effectiveClientId
         ..conversationId = effectiveConversationId;
+
+      // Add system prompt if provided
+      if (systemPrompt.isNotEmpty) {
+        request.systemPrompt = systemPrompt;
+        Logger.info('Using custom system prompt: ${systemPrompt.length > 50 ? '${systemPrompt.substring(0, 50)}...' : systemPrompt}');
+      }
 
       Logger.info(
           'Starting conversation for client: $effectiveClientId with ID: $effectiveConversationId');

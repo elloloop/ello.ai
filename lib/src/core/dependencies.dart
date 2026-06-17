@@ -319,8 +319,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
           try {
             // Try to start a new conversation
             final clientId = 'client-${DateTime.now().millisecondsSinceEpoch}';
-            final response =
-                await grpcClient.startConversation(clientId: clientId);
+            final systemPrompt = ref.read(systemPromptProvider);
+            final response = await grpcClient.startConversation(
+              clientId: clientId,
+              systemPrompt: systemPrompt,
+            );
 
             // Update the conversation ID in the provider
             ref
@@ -388,7 +391,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
           try {
             final clientId =
                 'recovery-${DateTime.now().millisecondsSinceEpoch}';
-            await grpcClient.startConversation(clientId: clientId);
+            final systemPrompt = ref.read(systemPromptProvider);
+            await grpcClient.startConversation(
+              clientId: clientId,
+              systemPrompt: systemPrompt,
+            );
           } catch (startError) {
             Logger.error('Failed to restart conversation: $startError');
           }
@@ -491,8 +498,11 @@ class ChatController extends StateNotifier<AsyncValue<void>> {
         // Try to start a new conversation right away
         try {
           final clientId = 'reset-${DateTime.now().millisecondsSinceEpoch}';
-          final response =
-              await grpcClient.startConversation(clientId: clientId);
+          final systemPrompt = ref.read(systemPromptProvider);
+          final response = await grpcClient.startConversation(
+            clientId: clientId,
+            systemPrompt: systemPrompt,
+          );
 
           // Update the conversation ID in the provider
           ref
@@ -528,6 +538,21 @@ class ConversationIdNotifier extends StateNotifier<String?> {
   void clearConversationId() {
     Logger.debug('Clearing conversation ID');
     state = null;
+  }
+}
+
+/// System prompt notifier
+class SystemPromptNotifier extends StateNotifier<String> {
+  SystemPromptNotifier() : super('');
+
+  void setSystemPrompt(String prompt) {
+    Logger.debug('Setting system prompt: $prompt');
+    state = prompt;
+  }
+
+  void clearSystemPrompt() {
+    Logger.debug('Clearing system prompt');
+    state = '';
   }
 }
 
@@ -824,6 +849,10 @@ final conversationIdProvider =
   return notifier;
 });
 
+/// System prompt provider
+final systemPromptProvider =
+    StateNotifierProvider<SystemPromptNotifier, String>((ref) => SystemPromptNotifier());
+
 /// Provider to check if there's an active conversation
 final hasActiveConversationProvider = Provider<bool>((ref) {
   final conversationId = ref.watch(conversationIdProvider);
@@ -838,8 +867,14 @@ final startConversationProvider = FutureProvider.autoDispose((ref) async {
     // Generate a unique client ID
     final clientId = 'client-${DateTime.now().millisecondsSinceEpoch}';
 
+    // Get the system prompt
+    final systemPrompt = ref.read(systemPromptProvider);
+
     // Start a new conversation
-    final response = await client.startConversation(clientId: clientId);
+    final response = await client.startConversation(
+      clientId: clientId,
+      systemPrompt: systemPrompt,
+    );
 
     // Update the conversation ID in the provider
     ref

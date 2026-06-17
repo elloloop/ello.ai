@@ -43,6 +43,7 @@ message ActionRequest {
 message StartConversationRequest {
   string client_id = 1;
   string conversation_id = 2;
+  string system_prompt = 3;
 }
 
 // Response for starting a new conversation
